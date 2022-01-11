@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 //using System.Linq;
 //using System.Text;
 //using System.Threading.Tasks;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.Attributes;
+using Autodesk.Revit.UI.Selection;
 
 namespace SolidBoolOperationTest
 {
@@ -17,10 +19,22 @@ namespace SolidBoolOperationTest
         {
             UIDocument activeUIDoc = commandData.Application.ActiveUIDocument;
             Document activeDoc = activeUIDoc.Document;
-            
+
+            FilteredElementCollector linkInstances = new FilteredElementCollector(activeDoc);
+            linkInstances = linkInstances.WherePasses(new ElementClassFilter(typeof(RevitLinkInstance)));
+            Document linkDoc = null;
+            if (linkInstances != null)
+            {
+                foreach (RevitLinkInstance linkIns in linkInstances)
+                {
+                    linkDoc = linkIns.GetLinkDocument();
+                    break;
+                }
+            }
+            //IList<Reference> refs = activeUIDoc.Selection.PickObjects(ObjectType.Element, new SpecialElementsSelectionFilter());
             // 柱子实例获取
             FamilyInstance column = activeDoc.GetElement(new ElementId(532721)) as FamilyInstance;
-            Wall wall = activeDoc.GetElement(new ElementId(530413)) as Wall;
+            //Wall wall = activeDoc.GetElement(new ElementId(530413)) as Wall;
 
             GeometryElement columnGeoElement = column.get_Geometry(new Options());
             Solid columnSolid = null; ;
@@ -33,27 +47,66 @@ namespace SolidBoolOperationTest
                 }
             }
 
-            GeometryElement wallGeoElement = wall.get_Geometry(new Options());
-            Solid wallSolid = null;
-            foreach (GeometryObject geometryObject in wallGeoElement)
+            //GeometryElement wallGeoElement = wall.get_Geometry(new Options());
+            //Solid wallSolid = null;
+            //foreach (GeometryObject geometryObject in wallGeoElement)
+            //{
+            //    if (geometryObject is Solid)
+            //    {
+            //        wallSolid = (Solid)geometryObject;
+            //        break;
+            //    }
+            //}
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+            // 相交过滤器
+            FilteredElementCollector collector = new FilteredElementCollector(activeDoc);
+            ElementIntersectsSolidFilter solidFilter = new ElementIntersectsSolidFilter(columnSolid);
+
+            collector.WherePasses(solidFilter);
+            stopwatch.Stop();
+            TaskDialog.Show("note", stopwatch.ElapsedMilliseconds.ToString());
+            // Add these interseting element to the selection
+            foreach (Element elem in collector)
             {
-                if (geometryObject is Solid)
-                {
-                    wallSolid = (Solid)geometryObject;
-                    break;
-                }
+                TaskDialog.Show("note", (elem.GetType() == typeof(Wall)).ToString());
             }
 
-            using (Transaction tran = new Transaction(activeDoc, "default"))
-            {
-                tran.Start();
-                DeductionOperation(activeDoc, column, wall);
-                SolidByUnion(new List<Solid> { columnSolid, wallSolid});
-                tran.Commit();
-            }
+
+            //using (Transaction tran = new Transaction(activeDoc, "default"))
+            //{
+            //    tran.Start();
+            //    DeductionOperation(activeDoc, column, wall);
+            //    SolidByUnion(new List<Solid> { columnSolid, wallSolid});
+            //    tran.Commit();
+            //}
 
             return Result.Succeeded;
         }
+
+        private IList<Document> GetRVTLinkDocs(Document activeDoc)
+        {
+            IList<Document> results = new List<Document>();
+            FilteredElementCollector linkInstances = new FilteredElementCollector(activeDoc);
+            linkInstances = linkInstances.WherePasses(new ElementClassFilter(typeof(RevitLinkInstance)));
+            if (linkInstances != null)
+            {
+                foreach (RevitLinkInstance linkIns in linkInstances)
+                {
+                    results.Add(linkIns.GetLinkDocument());
+                }
+            }
+
+            if (results.Count > 0)
+            {
+                return results;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
         private Solid SolidByUnion(List<Solid> solids)
         {
             Solid result;
@@ -93,6 +146,12 @@ namespace SolidBoolOperationTest
             }
         }
 
+        private Solid GetIntersectPart(Solid part1, Solid part2)
+        {
+            Solid result = null;
+            return result;
+        }
+
         private void DeductionOperation(Document activeDoc, Element a, Element b)
         {
             if (JoinGeometryUtils.AreElementsJoined(activeDoc, a, b))
@@ -109,7 +168,7 @@ namespace SolidBoolOperationTest
             }
             catch (Exception ex)
             {
-
+              
             }
         }
     }
