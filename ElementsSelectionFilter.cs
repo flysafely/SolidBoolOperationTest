@@ -14,19 +14,19 @@ namespace SolidBoolOperationTest
     {
         public bool AllowElement(Element element)
         {
-            if (element is Floor)
+            if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Walls)
             {
                 return true;
             }
-            else if (element is Wall)
+            else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Floors)
             {
                 return true;
             }
-            else if (element is FamilyInstance)
+            else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralFraming)
             {
                 return true;
             }
-            else if (element is RevitLinkInstance)
+            else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_RvtLinks)
             {
                 return true;
             }

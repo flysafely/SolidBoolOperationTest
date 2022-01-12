@@ -75,3 +75,4 @@ F:\RevitProjects\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.csproj.
 F:\RevitProjects\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.csproj.CopyComplete
 F:\RevitProjects\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.dll
 F:\RevitProjects\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.pdb
+F:\RevitProjects\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.csproj.AssemblyReference.cache
