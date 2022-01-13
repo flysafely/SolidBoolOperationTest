@@ -22,6 +22,10 @@ namespace SolidBoolOperationTest
             {
                 return true;
             }
+            else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_Columns)
+            {
+                return true;
+            }
             else if (element.Category.Id.IntegerValue == (int)BuiltInCategory.OST_StructuralFraming)
             {
                 return true;

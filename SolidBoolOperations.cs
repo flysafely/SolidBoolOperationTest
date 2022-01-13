@@ -14,7 +14,6 @@ namespace SolidBoolOperationTest
     [Transaction(TransactionMode.Manual)]
     public class SolidBoolOperations : IExternalCommand
     {
-
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
             UIDocument activeUIDoc = commandData.Application.ActiveUIDocument;
@@ -31,9 +30,17 @@ namespace SolidBoolOperationTest
             //         break;
             //     }
             // }
-            IList<Reference> refs = activeUIDoc.Selection.PickObjects(ObjectType.Element, new ElementsSelectionFilter());
+            IList<Reference> refs =
+                activeUIDoc.Selection.PickObjects(ObjectType.Element, new ElementsSelectionFilter());
             CompsiteElementsClassifier compsiteElementsClassifier = new CompsiteElementsClassifier(activeDoc, refs);
-            TaskDialog.Show("Notes", compsiteElementsClassifier.ElementsDic[BuiltInCategory.OST_Walls.ToString()].Count.ToString());
+            var results = compsiteElementsClassifier.GetElementsDictionary();
+            TaskDialog.Show("Notes",
+                string.Format("当前文档中-墙数量:{0}个;/n板数量:{1}个;/n柱数量:{2}个;/n梁数量:{3}",
+                    results[BuiltInCategory.OST_Walls.ToString()].Count.ToString(),
+                    results[BuiltInCategory.OST_Floors.ToString()].Count.ToString(),
+                    results[BuiltInCategory.OST_Columns.ToString()].Count.ToString(),
+                    results[BuiltInCategory.OST_StructuralFraming.ToString()].Count.ToString())
+            );
             // 柱子实例获取
             // FamilyInstance column = activeDoc.GetElement(new ElementId(532721)) as FamilyInstance;
             // //Wall wall = activeDoc.GetElement(new ElementId(530413)) as Wall;
@@ -85,70 +92,5 @@ namespace SolidBoolOperationTest
 
             return Result.Succeeded;
         }
-        
-        // private Solid SolidByUnion(List<Solid> solids)
-        // {
-        //     Solid result;
-        //     if (solids.Count > 2)
-        //     {
-        //         Solid solid1 = solids[0];
-        //         solids.RemoveAt(0);
-        //         Solid solid2 = SolidByUnion(solids);
-        //         var intersect = BooleanOperationsUtils.ExecuteBooleanOperation(solid1, solid2, BooleanOperationsType.Intersect);
-        //         if (intersect.Volume > 0)
-        //         {
-        //             var difference = BooleanOperationsUtils.ExecuteBooleanOperation(solid1, intersect, BooleanOperationsType.Difference);
-        //             result = BooleanOperationsUtils.ExecuteBooleanOperation(difference, solid2, BooleanOperationsType.Union);
-        //         }
-        //         else
-        //         {
-        //             result = BooleanOperationsUtils.ExecuteBooleanOperation(solid1, solid2, BooleanOperationsType.Union);
-        //         }
-        //         return result;
-        //
-        //     }
-        //     else
-        //     {
-        //         Solid solid1 = solids[0];
-        //         Solid solid2 = solids[1];
-        //         var intersect = BooleanOperationsUtils.ExecuteBooleanOperation(solid1, solid2, BooleanOperationsType.Intersect);
-        //         if (intersect.Volume > 0)
-        //         {
-        //             var difference = BooleanOperationsUtils.ExecuteBooleanOperation(solid1, intersect, BooleanOperationsType.Difference);
-        //             result = BooleanOperationsUtils.ExecuteBooleanOperation(difference, solid2, BooleanOperationsType.Union);
-        //         }
-        //         else
-        //         {
-        //             result = BooleanOperationsUtils.ExecuteBooleanOperation(solid1, solid2, BooleanOperationsType.Union);
-        //         }
-        //         return result;
-        //     }
-        // }
-        //
-        // private Solid GetIntersectPart(Solid part1, Solid part2)
-        // {
-        //     Solid result = null;
-        //     return result;
-        // }
-        //
-        // private void DeductionOperation(Document activeDoc, Element a, Element b)
-        // {
-        //     if (JoinGeometryUtils.AreElementsJoined(activeDoc, a, b))
-        //     {
-        //         JoinGeometryUtils.UnjoinGeometry(activeDoc, a, b);
-        //     }
-        //     try
-        //     {
-        //         JoinGeometryUtils.JoinGeometry(activeDoc, a, b);
-        //         if (!JoinGeometryUtils.IsCuttingElementInJoin(activeDoc, a, b))
-        //         {
-        //             JoinGeometryUtils.SwitchJoinOrder(activeDoc, a, b);
-        //         }
-        //     }
-        //     catch (Exception ex)
-        //     {
-        //       
-        //     }
-        // }
     }
 }

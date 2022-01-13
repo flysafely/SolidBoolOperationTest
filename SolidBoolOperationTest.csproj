@@ -49,6 +49,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CompsiteElementsClassifier.cs" />
+    <Compile Include="CutOrder.cs" />
+    <Compile Include="CutProcess.cs" />
     <Compile Include="ElementsSelectionFilter.cs" />
     <Compile Include="PendingElement.cs" />
     <Compile Include="SolidBoolOperations.cs" />
