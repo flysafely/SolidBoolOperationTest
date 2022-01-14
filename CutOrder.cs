@@ -2,17 +2,17 @@
 {
     public enum CutOrder
     {
-        LEVEL_TOP = 0,
-        LEVEL_1 = 1,
-        LEVEL_2 = 2,
-        LEVEL_3 = 3,
-        LEVEL_4 = 4,
-        LEVEL_5 = 5,
-        LEVEL_6 = 6,
-        LEVEL_7 = 7,
-        LEVEL_8 = 8,
-        LEVEL_9 = 9,
-        LEVEL_10 = 10,
-        LEVEL_BUTTOM = 100
+        Level0 = 0,
+        Level1 = 1,
+        Level2 = 2,
+        Level3 = 3,
+        Level4 = 4,
+        Level5 = 5,
+        Level6 = 6,
+        Level7 = 7,
+        Level8 = 8,
+        Level9 = 9,
+        Level10 = 10,
+        Level100 = 100
     }
 }

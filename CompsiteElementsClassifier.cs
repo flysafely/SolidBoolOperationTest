@@ -3,161 +3,76 @@
 // using System.Threading.Tasks;
 // using Autodesk.Revit.UI;
 // using Autodesk.Revit.Attributes;
+
+//using System;
 using System.Collections.Generic;
 using System.Linq;
 using Autodesk.Revit.DB;
+using CommonTools;
 
 namespace SolidBoolOperationTest
 {
-    public class CompsiteElementsClassifier
+    public class CompositeElementsClassifier
     {
+        private IList<object> targetCategories;
+        
         private readonly Document _activeDoc;
+        // 使用object作为键值是为了方便后期筛选条件类型发生变化
+        private List<PendingElement> _resultElements;
+        
+        public IList<Document> allDocuments;
 
-        private Dictionary<string, List<PendingSolid>> _elementsDic;
-
-        public CompsiteElementsClassifier(Document doc, IList<Reference> refs)
+        public CompositeElementsClassifier(Document doc, IList<Reference> refs, IList<object> categoryEnums)
         {
             _activeDoc = doc;
-            // 初始化元素分组字典
-            Init_elementsDic();
+            // 第一doc永远是当前打开文档
+            allDocuments = new List<Document>();
+            allDocuments.Add(doc);
+            // 目标筛选的类型
+            targetCategories = categoryEnums;
             // 聚类操作
             ClassifyElement(refs);
         }
-
-        private void Init_elementsDic()
-        {
-            _elementsDic = new Dictionary<string, List<PendingSolid>>
-            {
-                {
-                    BuiltInCategory.OST_Walls.ToString(),
-                    new List<PendingSolid>()
-                },
-                {
-                    BuiltInCategory.OST_Floors.ToString(),
-                    new List<PendingSolid>()
-                },
-                {
-                    BuiltInCategory.OST_Columns.ToString(),
-                    new List<PendingSolid>()
-                },
-                {
-                    BuiltInCategory.OST_StructuralFraming.ToString(),
-                    new List<PendingSolid>()
-                }
-            };
-        }
-
+        
         private void ClassifyElement(IList<Reference> refs)
         {
-            var existsNestingRevitLink = false;
             var outsideRevitLinkIds = new List<ElementId>();
+            var tempList = new List<PendingElement>();
             foreach (var reference in refs)
             {
                 var ele = _activeDoc.GetElement(reference);
-                
-                switch ((BuiltInCategory) ele.Category.Id.IntegerValue)
+                if ((BuiltInCategory)ele.Category.Id.IntegerValue == BuiltInCategory.OST_RvtLinks)
                 {
-                    case BuiltInCategory.OST_Walls:
-                        _elementsDic[BuiltInCategory.OST_Walls.ToString()].Add(new PendingSolid(GetArchMainSolid(ele, null), false));
-                        break;
-                    case BuiltInCategory.OST_Floors:
-                        _elementsDic[BuiltInCategory.OST_Floors.ToString()].Add(new PendingSolid(GetArchMainSolid(ele, null), false));
-                        break;
-                    case BuiltInCategory.OST_Columns:
-                        _elementsDic[BuiltInCategory.OST_Columns.ToString()].Add(new PendingSolid(GetArchMainSolid(ele, null), false));
-                        break;
-                    case BuiltInCategory.OST_StructuralFraming:
-                        _elementsDic[BuiltInCategory.OST_StructuralFraming.ToString()].Add(new PendingSolid(GetArchMainSolid(ele, null), false));
-                        break;
-                    case BuiltInCategory.OST_RvtLinks:
-                        // 存在revitlinkinstance情况下进行嵌套判断
-                        existsNestingRevitLink = true;
-                        // 将非嵌套的revitlinkinstance记录，用于后面排除
-                        outsideRevitLinkIds.Add(ele.Id);
-                        // 非嵌套revitlinkinstance处理
-                        AnalysisRvtLinkElements(ele);
-                        break;
+                    // 将非嵌套的RevitLinkInstance记录，用于后面排除
+                    outsideRevitLinkIds.Add(ele.Id);
+                    // 非嵌套RevitLinkInstance处理
+                    AnalysisNonNestedElements(ele, tempList);
+                    // 由于嵌套和非嵌套链接文件在当前文件中都能直接获取到，所以需要在分析嵌套链接文件时候排除非嵌套的链接，减少重复操作
+                    AnalysisNestedElements(outsideRevitLinkIds, tempList);
+                }
+                else
+                {
+                    tempList.Add(new PendingElement(_activeDoc, ele, null));
                 }
             }
 
-            if (existsNestingRevitLink)
-            {
-                AnalysisNestRvtLink(outsideRevitLinkIds);
-            }
+            _resultElements = tempList;
         }
-
-        private Solid GetArchMainSolid(Element element, Transform transform)
-        {
-            GeometryElement geometryElement = element.get_Geometry(new Options());
-            IList<Solid> solids = new List<Solid>();
-            IList<double> volumes = new List<double>();
-            
-            if (element is FamilyInstance)
-            {
-                foreach (GeometryObject geoObj in geometryElement)
-                {
-
-                    GeometryInstance geometryInstance = geoObj as GeometryInstance;
-                    if (geometryInstance != null)
-                    {
-                        foreach (GeometryObject instObj in geometryInstance.SymbolGeometry)
-                        {   
-                            var solid = instObj as Solid;
-                            if (solid != null &&　solid.Volume != 0 && solid.SurfaceArea != 0 )
-                            {
-                                solids.Add(solid);
-                                volumes.Add(solid.Volume);
-                            }
-                        }
-                    }
-                    Solid solidDirect = geoObj as Solid;
-                    if (solidDirect != null &&　solidDirect.Volume != 0 && solidDirect.SurfaceArea != 0 )
-                    {
-                        solids.Add(solidDirect);
-                        volumes.Add(solidDirect.Volume);
-                    }
-                }
-            }
-            else
-            {
-                foreach (GeometryObject geoObject in geometryElement)
-                {
-                    var solid = geoObject as Solid;
-                    if(solid != null &&　solid.Volume != 0 && solid.SurfaceArea != 0 )
-                    {
-                        solids.Add(solid);
-                        volumes.Add(solid.Volume);
-                    }
-                }
-            }
-            // 赛选出体积最大的一个solid作为主Soild
-            double maxVolume = volumes.Max();
-            int index = volumes.IndexOf(maxVolume);
-            Solid maxSolid = solids[index];
-            if (transform == null)
-            {
-                return maxSolid;
-            }
-            else
-            {
-                return SolidUtils.CreateTransformed(maxSolid, transform);
-            }
-        }
-        //private delegate void AddElementsToDic(Enum builtInCategory);
-
-        private void AnalysisRvtLinkElements(Element revitLinkEle)
+        
+        private void AnalysisNonNestedElements(Element revitLinkEle, IList<PendingElement> tempList)
         {
             var revitLink = revitLinkEle as RevitLinkInstance;
-            Transform linkTransform = revitLink.GetTransform();
+            var linkTransform = revitLink?.GetTransform();
             var linkDoc = revitLink?.GetLinkDocument();
-
-            AddElementSolidsToDic(linkDoc, linkTransform, BuiltInCategory.OST_Walls);
-            AddElementSolidsToDic(linkDoc, linkTransform, BuiltInCategory.OST_Floors);
-            AddElementSolidsToDic(linkDoc, linkTransform, BuiltInCategory.OST_Columns);
-            AddElementSolidsToDic(linkDoc, linkTransform, BuiltInCategory.OST_StructuralFraming);
+            // 记录下doc用于其他文档中的元素进行过滤操作
+            allDocuments.Add(linkDoc);
+            foreach (var targetCategory in targetCategories)
+            {
+                AddLinkingElementToDic(linkDoc, linkTransform, targetCategory, tempList);
+            }
         }
 
-        private void AnalysisNestRvtLink(List<ElementId> elementIds)
+        private void AnalysisNestedElements(List<ElementId> elementIds, IList<PendingElement> tempList)
         {
             var elementsCollector = new FilteredElementCollector(_activeDoc);
             var filter = new ElementCategoryFilter(BuiltInCategory.OST_RvtLinks);
@@ -166,30 +81,28 @@ namespace SolidBoolOperationTest
             {
                 if (!elementIds.Contains(revitLink.Id) && revitLink as ElementType == null)
                 {
-                    AnalysisRvtLinkElements(revitLink);
+                    AnalysisNonNestedElements(revitLink, tempList);
                 }
             }
         }
 
-        private void AddElementSolidsToDic(Document linkDoc, Transform transform, BuiltInCategory builtInCategory)
+        private void AddLinkingElementToDic(Document linkDoc, Transform transform, object category, IList<PendingElement> tempList)
         {
             var elementsCollector = new FilteredElementCollector(linkDoc);
-            var filter = new ElementCategoryFilter(builtInCategory);
+            var filter = new ElementCategoryFilter((BuiltInCategory)category);
             var elements = elementsCollector.WherePasses(filter).ToElements();
-            IList<PendingSolid> pendingSolids = new List<PendingSolid>();
             foreach (var ele in elements)
             {
                 if (ele as ElementType == null)
                 {
-                    pendingSolids.Add(new PendingSolid(GetArchMainSolid(ele, transform), false));
+                    tempList.Add(new PendingElement(linkDoc, ele, transform));
                 }
             }
-            _elementsDic[builtInCategory.ToString()] = _elementsDic[builtInCategory.ToString()].Concat(pendingSolids).ToList();
         }
 
-        public Dictionary<string, List<PendingSolid>> GetElementsDictionary()
+        public List<PendingElement> GetExistIntersectElements()
         {
-            return _elementsDic;
+            return _resultElements;
         }
     }
 }

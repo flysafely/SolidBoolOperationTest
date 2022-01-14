@@ -48,10 +48,13 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AssociationTypes.cs" />
+    <Compile Include="CommonTools.cs" />
     <Compile Include="CompsiteElementsClassifier.cs" />
     <Compile Include="CutOrder.cs" />
     <Compile Include="CutProcess.cs" />
     <Compile Include="ElementsSelectionFilter.cs" />
+    <Compile Include="FamilyLoadOptions.cs" />
     <Compile Include="PendingElement.cs" />
     <Compile Include="SolidBoolOperations.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

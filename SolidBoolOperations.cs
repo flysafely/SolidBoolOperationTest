@@ -1,6 +1,9 @@
-﻿using System;
+﻿//using System;
+
+using System;
 using System.Collections.Generic;
-using System.Diagnostics;
+using System.Linq;
+//using System.Diagnostics;
 //using System.Linq;
 //using System.Text;
 //using System.Threading.Tasks;
@@ -14,10 +17,18 @@ namespace SolidBoolOperationTest
     [Transaction(TransactionMode.Manual)]
     public class SolidBoolOperations : IExternalCommand
     {
+        IList<object> targetCategories = new List<object>()
+        {
+            BuiltInCategory.OST_Walls,
+            BuiltInCategory.OST_Floors,
+            BuiltInCategory.OST_Columns,
+            BuiltInCategory.OST_StructuralFraming
+        };
+
         public Result Execute(ExternalCommandData commandData, ref string message, ElementSet elements)
         {
-            UIDocument activeUIDoc = commandData.Application.ActiveUIDocument;
-            Document activeDoc = activeUIDoc.Document;
+            UIDocument activeUiDoc = commandData.Application.ActiveUIDocument;
+            Document activeDoc = activeUiDoc.Document;
 
             // FilteredElementCollector linkInstances = new FilteredElementCollector(activeDoc);
             // linkInstances = linkInstances.WherePasses(new ElementClassFilter(typeof(RevitLinkInstance)));
@@ -30,32 +41,51 @@ namespace SolidBoolOperationTest
             //         break;
             //     }
             // }
-            IList<Reference> refs =
-                activeUIDoc.Selection.PickObjects(ObjectType.Element, new ElementsSelectionFilter());
-            CompsiteElementsClassifier compsiteElementsClassifier = new CompsiteElementsClassifier(activeDoc, refs);
-            var results = compsiteElementsClassifier.GetElementsDictionary();
-            TaskDialog.Show("Notes",
-                string.Format("当前文档中-墙数量:{0}个;/n板数量:{1}个;/n柱数量:{2}个;/n梁数量:{3}",
-                    results[BuiltInCategory.OST_Walls.ToString()].Count.ToString(),
-                    results[BuiltInCategory.OST_Floors.ToString()].Count.ToString(),
-                    results[BuiltInCategory.OST_Columns.ToString()].Count.ToString(),
-                    results[BuiltInCategory.OST_StructuralFraming.ToString()].Count.ToString())
-            );
-            // 柱子实例获取
+            
+            var refs = activeUiDoc.Selection.PickObjects(ObjectType.Element, new ElementsSelectionFilter());
+             var compositeElementsClassifier = new CompositeElementsClassifier(activeDoc, refs, targetCategories);
+             var results = compositeElementsClassifier.GetExistIntersectElements();
+             TaskDialog.Show("Notes", results.Count.ToString());
+             // 柱子实例获取
             // FamilyInstance column = activeDoc.GetElement(new ElementId(532721)) as FamilyInstance;
             // //Wall wall = activeDoc.GetElement(new ElementId(530413)) as Wall;
-            //
+            // var revitlink = activeDoc.GetElement(new ElementId(537047));
+            // var linkinstance = revitlink as RevitLinkInstance;
+            // var linkDoc = linkinstance?.GetLinkDocument();
             // GeometryElement columnGeoElement = column.get_Geometry(new Options());
-            // Solid columnSolid = null; ;
+            // Solid columnSolid = null;
+            // Solid newSolid = null;
             // foreach (GeometryObject geometryObject in columnGeoElement)
             // {
             //     if (geometryObject is Solid)
             //     {
             //         columnSolid = (Solid)geometryObject;
+            //         newSolid = SolidUtils.CreateTransformed(columnSolid, linkinstance.GetTransform().Inverse);
             //         break;
             //     }
             // }
-
+            //
+            //
+            // var transform = newSolid.GetBoundingBox().Transform;
+            //
+            // var minSolid = newSolid.GetBoundingBox().Min;
+            // var maxSolid = newSolid.GetBoundingBox().Max;
+            //
+            // var acturalMin = transform.OfPoint(minSolid);
+            // var acturalMax = transform.OfPoint(maxSolid);
+            //
+            // var outline = new Outline(acturalMin, acturalMax);
+            //
+            // var boxFilter = new BoundingBoxIntersectsFilter(outline);
+            //
+            // var collector = new FilteredElementCollector(linkDoc);
+            // var intersectElements = collector
+            //         .WherePasses(boxFilter)
+            //         .ToList();
+            // foreach (var item in collector)
+            // {
+            //     TaskDialog.Show("note" , item.Id.ToString());
+            // }
             //GeometryElement wallGeoElement = wall.get_Geometry(new Options());
             //Solid wallSolid = null;
             //foreach (GeometryObject geometryObject in wallGeoElement)
@@ -75,7 +105,6 @@ namespace SolidBoolOperationTest
             // collector.WherePasses(solidFilter);
             // stopwatch.Stop();
             // TaskDialog.Show("note", stopwatch.ElapsedMilliseconds.ToString());
-            // // Add these interseting element to the selection
             // foreach (Element elem in collector)
             // {
             //     TaskDialog.Show("note", (elem.GetType() == typeof(Wall)).ToString());

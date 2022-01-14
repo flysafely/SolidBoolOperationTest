@@ -16,21 +16,20 @@ namespace SolidBoolOperationTest
         // 默认剪切策略(结构(柱>梁)>建筑)
         private Dictionary<string, int> CutPolicy;
         
-        public CutProcess(Element eleOne, Element eleTwo , Dictionary<string, int> customPolicy)
+        public CutProcess(Dictionary<string, int> customPolicy)
         {   
             // 初始化剪切策略
             InitCutPolicy(customPolicy);
-            
         }
 
         private void InitCutPolicy(Dictionary<string, int> customPolicy)
         {
             CutPolicy = new Dictionary<string, int>
             {
-                {BuiltInCategory.OST_Walls.ToString(), (int) CutOrder.LEVEL_10},
-                {BuiltInCategory.OST_Floors.ToString(), (int) CutOrder.LEVEL_3},
-                {BuiltInCategory.OST_Columns.ToString(), (int) CutOrder.LEVEL_1},
-                {BuiltInCategory.OST_StructuralFraming.ToString(), (int) CutOrder.LEVEL_2}
+                {BuiltInCategory.OST_Walls.ToString(), (int) CutOrder.Level10},
+                {BuiltInCategory.OST_Floors.ToString(), (int) CutOrder.Level3},
+                {BuiltInCategory.OST_Columns.ToString(), (int) CutOrder.Level1},
+                {BuiltInCategory.OST_StructuralFraming.ToString(), (int) CutOrder.Level2}
             };
             foreach (var dicItem in customPolicy)
             {
@@ -52,6 +51,20 @@ namespace SolidBoolOperationTest
                 CutPolicy.Add(categoryStr, levelNum);
             }
         }
+
+        // public Solid IntersectAnalysis(Dictionary<object, List<PendingElement>> classifiedPendingElements)
+        // {
+        //     //
+        //     foreach (var classPendingElements in classifiedPendingElements)
+        //     {
+        //         // 本类中的体存在相交需要标注(类似碰撞检查)
+        //         foreach (var pending in classPendingElements.Value)
+        //         {
+        //             newDic.Add(pending.theElement.Id, pending);
+        //         }
+        //         // 本类与其他类的体相交判断记录
+        //     }
+        // }
 
         private Solid SolidByUnion(List<Solid> solids)
         {
