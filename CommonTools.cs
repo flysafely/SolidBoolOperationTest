@@ -12,13 +12,13 @@ namespace CommonTools
     {
         public static double ToFeet(this double value)
         {
-            double foot = UnitUtils.ConvertToInternalUnits(value, DisplayUnitType.DUT_MILLIMETERS);
+            double foot = UnitUtils.ConvertToInternalUnits(value, UnitTypeId.Millimeters);
             return foot;
         }
         
         public static double ToMillimeters(this double value)
         {
-            double millimeter = UnitUtils.Convert(value, DisplayUnitType.DUT_DECIMAL_FEET, DisplayUnitType.DUT_MILLIMETERS);
+            double millimeter = UnitUtils.Convert(value, UnitTypeId.Feet, UnitTypeId.Millimeters);
             return millimeter;
         }
 
@@ -216,7 +216,7 @@ namespace CommonTools
                     }
                     tran.Commit();
                 }
-                Family family = familyDoc.LoadFamily(doc);
+                Family family = familyDoc.LoadFamily(doc, new FamilyLoadOptions());
                 familyDoc.Close(false);
                 return family;
             }
@@ -439,7 +439,7 @@ namespace CommonTools
                             var solid = instObj as Solid;
                             if (solid != null &&　solid.Volume != 0 && solid.SurfaceArea != 0 )
                             {
-                                solids.Add(solid);
+                                solids.Add(SolidUtils.CreateTransformed(solid, geometryInstance.Transform));
                                 volumes.Add(solid.Volume);
                             }
                         }
@@ -476,6 +476,34 @@ namespace CommonTools
             {
                 return SolidUtils.CreateTransformed(maxSolid, transform);
             }
+        }
+        
+        public static FamilySymbol CreateFamilySymbol(Document doc, Application app, Solid cutSolid)
+        {
+
+            var hollowStretch = CreateFreeFormElementFamily(doc, app, cutSolid, false);
+
+            var ids = hollowStretch.GetFamilySymbolIds();
+            var elementIdEnumerator = ids.GetEnumerator();
+
+            while (elementIdEnumerator.MoveNext())
+            {
+                var familySymbol = doc.GetElement(elementIdEnumerator.Current) as FamilySymbol;
+                if (familySymbol != null)
+                {
+                    using (Transaction tran = new Transaction(doc, "createNewFamilyInstance"))
+                    {
+                        tran.Start();
+                        if (!familySymbol.IsActive)
+                        {
+                            familySymbol.Activate();
+                        }
+                        tran.Commit();
+                    }          
+                }
+                return familySymbol;
+            }
+            return null;
         }
     }
 }

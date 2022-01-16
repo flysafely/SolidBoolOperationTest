@@ -25,6 +25,7 @@ namespace SolidBoolOperationTest
                 (int)BuiltInCategory.OST_Walls,
                 (int)BuiltInCategory.OST_Floors,
                 (int)BuiltInCategory.OST_Columns,
+                (int)BuiltInCategory.OST_StructuralColumns,
                 (int)BuiltInCategory.OST_StructuralFraming,
                 (int)BuiltInCategory.OST_RvtLinks
             };

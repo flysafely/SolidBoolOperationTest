@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using Autodesk.Revit.ApplicationServices;
 //using System.Linq;
 //using System.Text;
 //using System.Threading.Tasks;
@@ -8,50 +9,162 @@ using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.UI.Selection;
+using CommonTools;
 
 namespace SolidBoolOperationTest
 {
     public class CutProcess
-    {   
-        // 默认剪切策略(结构(柱>梁)>建筑)
-        private Dictionary<string, int> CutPolicy;
+    {
+        private Application _activeApp;
         
-        public CutProcess(Dictionary<string, int> customPolicy)
-        {   
+        private Document _activeDoc;
+
+        public IList<Dictionary<string, object>> intersectSolids = new List<Dictionary<string, object>>();
+
+        // 同类型构件冲突对
+        private IList<Array> collideElements = new List<Array>();
+
+        // 默认剪切策略(结构(柱>梁)>建筑)
+        private Dictionary<BuiltInCategory, int> CutPolicy = new Dictionary<BuiltInCategory, int>
+        {
+            {BuiltInCategory.OST_Walls, (int) CutOrder.Level10},
+            {BuiltInCategory.OST_Floors, (int) CutOrder.Level3},
+            {BuiltInCategory.OST_Columns, (int) CutOrder.Level1},
+            {BuiltInCategory.OST_StructuralColumns, (int) CutOrder.Level1},
+            {BuiltInCategory.OST_StructuralFraming, (int) CutOrder.Level2}
+        };
+        
+        public CutProcess(Application app, Document doc, Dictionary<BuiltInCategory, int> customPolicy)
+        {
+            _activeApp = app;
+            _activeDoc = doc;
             // 初始化剪切策略
             InitCutPolicy(customPolicy);
         }
 
-        private void InitCutPolicy(Dictionary<string, int> customPolicy)
+        private void InitCutPolicy(Dictionary<BuiltInCategory, int> customPolicy)
         {
-            CutPolicy = new Dictionary<string, int>
-            {
-                {BuiltInCategory.OST_Walls.ToString(), (int) CutOrder.Level10},
-                {BuiltInCategory.OST_Floors.ToString(), (int) CutOrder.Level3},
-                {BuiltInCategory.OST_Columns.ToString(), (int) CutOrder.Level1},
-                {BuiltInCategory.OST_StructuralFraming.ToString(), (int) CutOrder.Level2}
-            };
             foreach (var dicItem in customPolicy)
             {
                 ConfirmCutPolicy(dicItem.Key, dicItem.Value);
             }
         }
 
-        private void ConfirmCutPolicy(string categoryStr, int levelNum)
+        private void ConfirmCutPolicy(BuiltInCategory category, int levelNum)
         {
-            if (CutPolicy.ContainsKey(categoryStr))
+            if (CutPolicy.ContainsKey(category))
             {
-                if (CutPolicy[categoryStr] != levelNum)
+                if (CutPolicy[category] != levelNum)
                 {
-                    CutPolicy[categoryStr] = levelNum;
+                    CutPolicy[category] = levelNum;
                 }
             }
             else
             {
-                CutPolicy.Add(categoryStr, levelNum);
+                CutPolicy.Add(category, levelNum);
             }
         }
 
+        public void ImplementIntersectElementsCutPolicy(IList<PendingElement> pendingElements)
+        {
+            if (pendingElements.Count < 1)
+            {
+                return;
+            }
+
+            foreach (var pendingElement in pendingElements)
+            {   
+                foreach (var intersectPendingElement in pendingElement.IntersectEles)
+                {
+
+                    var pendingElementCutLevelNum = GetPendingElementCutOrderNumber(pendingElement);
+                    var intersectpendingElementCutLevelNum = GetPendingElementCutOrderNumber(intersectPendingElement);
+                    // 从原对象的标记属性中获取特殊优先级获取
+
+                    if (pendingElementCutLevelNum == intersectpendingElementCutLevelNum)
+                    {
+                        // 同类构件相交处理
+                        collideElements.Add(new object[]{pendingElement, intersectPendingElement});
+                    }
+                    else
+                    {
+                        if (pendingElementCutLevelNum > intersectpendingElementCutLevelNum)
+                        {
+                            ClassifyReadyToCreateSolid(intersectPendingElement, pendingElement);
+
+                        }
+                    }
+                }
+            }
+        }
+
+        private int GetPendingElementCutOrderNumber(PendingElement pendingElement)
+        {
+            var cutLevelNum = CutPolicy[(BuiltInCategory) pendingElement.element.Category.GetHashCode()];
+            // 从原对象的标记属性中获取特殊优先级获取
+            try
+            {
+                return int.Parse(pendingElement.element.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)
+                    .AsValueString());
+                
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+                return cutLevelNum;
+            }
+        }
+        
+        private void ClassifyReadyToCreateSolid(PendingElement cuttingPendingElement, PendingElement cuttedPendingElement)
+        {
+            intersectSolids.Add(new Dictionary<string, object>()
+            {
+                {"Document", cuttedPendingElement.element.Document},
+                {"HostCuttedPendingElement", cuttedPendingElement},
+                {"IntersectSolid", GetIntersectSolid(cuttingPendingElement, cuttedPendingElement)}
+            });
+        }
+        
+        private Solid GetIntersectSolid(PendingElement cuttingPendingElement, PendingElement cuttedPendingElement)
+        {
+            Solid intersectSolid = null;
+            var cuttingHostDoc = cuttingPendingElement.element.Document;
+            var cuttedHostDoc = cuttedPendingElement.element.Document;
+
+            Transform cuttingSolidTransform = null;
+
+            if (!cuttingHostDoc.Equals(cuttedHostDoc))
+            {
+                if (cuttingHostDoc.Equals(_activeDoc) && !cuttedHostDoc.Equals(_activeDoc))
+                {
+                    cuttingSolidTransform = cuttedPendingElement.TransformInWCS.Inverse;
+                }
+                else if (cuttedHostDoc.Equals(_activeDoc) && !cuttingHostDoc.Equals(_activeDoc))
+                {
+                    cuttingSolidTransform = cuttingPendingElement.TransformInWCS;
+                }
+                else
+                {
+                    cuttingSolidTransform = cuttingPendingElement.TransformInWCS.Multiply(cuttedPendingElement.TransformInWCS.Inverse);
+                }
+            }
+            var cuttingSolid = Tools.GetArchMainSolid(cuttingPendingElement.element, cuttingSolidTransform);
+            var cuttedSolid = Tools.GetArchMainSolid(cuttedPendingElement.element, null);
+            try
+            {
+                intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(cuttingSolid, cuttedSolid, BooleanOperationsType.Intersect);
+            }
+            catch (Exception e)
+            {   
+                Console.WriteLine(e.ToString());
+                var scaledCuttingSolid = SolidUtils.CreateTransformed(cuttingSolid,
+                    cuttingSolid.GetBoundingBox().Transform.ScaleBasis(0.99999));
+                intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(scaledCuttingSolid, cuttedSolid, BooleanOperationsType.Intersect);
+            }
+
+            return intersectSolid;
+        }
+        
         // public Solid IntersectAnalysis(Dictionary<object, List<PendingElement>> classifiedPendingElements)
         // {
         //     //

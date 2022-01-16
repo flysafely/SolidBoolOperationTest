@@ -12,41 +12,30 @@ namespace SolidBoolOperationTest
 {
     public class PendingElement
     {
-        public Document HostDoc { get; }
+        public Element element { get; }
         
-        public Element theElement { get; }
-
-        public Transform transformInWCS { get; }
-
-        private bool IsLinkingElement { get; }
+        public Transform TransformInWCS { get; }
         
         // 存取本对象存在相交的元素ID在剪切策略模式下，该元素作为被减对象还是剪切对象的布尔值(cutting=true/false)
-        private IList<Dictionary<string, object>> intersectEles = new List<Dictionary<string, object>>();
+        public IList<PendingElement> IntersectEles { get; }
 
-        public PendingElement(Document doc, Element ele, Transform trans)
-        {   
-            // 归属文档
-            HostDoc = doc;
+        public PendingElement(Element ele, Transform transform)
+        {
             // 元素本身
-            theElement = ele;
-            // 坐标系转换
-            transformInWCS = trans;
-            
+            element = ele;
+            // 世界坐标系中的坐标转换
+            TransformInWCS = transform;
+            IntersectEles = new List<PendingElement>();
         }
 
         public Solid GetPendingElementSolid()
         {
-            return Tools.GetArchMainSolid(theElement, transformInWCS);
+            return Tools.GetArchMainSolid(element, null);
         }
         
-        public void AddIntersectElement(PendingElement pendingElement, AssociationTypes cutType)
+        public void AddIntersectElement(PendingElement pendingElement)
         {
-            var info = new Dictionary<string, object>()
-            {
-                {"Element", pendingElement},
-                {"Type", cutType}
-            };
-            intersectEles.Add(info);
+            IntersectEles.Add(pendingElement);
         }
     }
 }
