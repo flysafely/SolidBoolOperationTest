@@ -11,14 +11,14 @@ namespace SolidBoolOperationTest
     {
         public bool OnFamilyFound(bool familyInUse, out bool overwriteParameterValues)
         {
-            overwriteParameterValues = true;
+            overwriteParameterValues = false;
             return true;
         }
 
         public bool OnSharedFamilyFound(Family sharedFamily, bool familyInUse, out FamilySource source, out bool overwriteParameterValues)
         {
-            source = FamilySource.Project;
-            overwriteParameterValues = true;
+            overwriteParameterValues = false;
+            source = FamilySource.Family;
             return true;
         }
     }

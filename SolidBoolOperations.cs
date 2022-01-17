@@ -63,83 +63,8 @@ namespace SolidBoolOperationTest
                 }
             }
             
-            
             TaskDialog.Show("note", cutProcess.intersectSolids.Count.ToString());
-
-            // TaskDialog.Show("Notes", results.Count.ToString());
-            // 柱子实例获取
-            // FamilyInstance column = activeDoc.GetElement(new ElementId(532721)) as FamilyInstance;
-            // //Wall wall = activeDoc.GetElement(new ElementId(530413)) as Wall;
-            // var revitlink = activeDoc.GetElement(new ElementId(537047));
-            // var linkinstance = revitlink as RevitLinkInstance;
-            // var linkDoc = linkinstance?.GetLinkDocument();
-            // GeometryElement columnGeoElement = column.get_Geometry(new Options());
-            // Solid columnSolid = null;
-            // Solid newSolid = null;
-            // foreach (GeometryObject geometryObject in columnGeoElement)
-            // {
-            //     if (geometryObject is Solid)
-            //     {
-            //         columnSolid = (Solid)geometryObject;
-            //         newSolid = SolidUtils.CreateTransformed(columnSolid, linkinstance.GetTransform().Inverse);
-            //         break;
-            //     }
-            // }
-            //
-            //
-            // var transform = newSolid.GetBoundingBox().Transform;
-            //
-            // var minSolid = newSolid.GetBoundingBox().Min;
-            // var maxSolid = newSolid.GetBoundingBox().Max;
-            //
-            // var acturalMin = transform.OfPoint(minSolid);
-            // var acturalMax = transform.OfPoint(maxSolid);
-            //
-            // var outline = new Outline(acturalMin, acturalMax);
-            //
-            // var boxFilter = new BoundingBoxIntersectsFilter(outline);
-            //
-            // var collector = new FilteredElementCollector(linkDoc);
-            // var intersectElements = collector
-            //         .WherePasses(boxFilter)
-            //         .ToList();
-            // foreach (var item in collector)
-            // {
-            //     TaskDialog.Show("note" , item.Id.ToString());
-            // }
-            //GeometryElement wallGeoElement = wall.get_Geometry(new Options());
-            //Solid wallSolid = null;
-            //foreach (GeometryObject geometryObject in wallGeoElement)
-            //{
-            //    if (geometryObject is Solid)
-            //    {
-            //        wallSolid = (Solid)geometryObject;
-            //        break;
-            //    }
-            //}
-            // Stopwatch stopwatch = new Stopwatch();
-            // stopwatch.Start();
-            // // 相交过滤器
-            // FilteredElementCollector collector = new FilteredElementCollector(activeDoc);
-            // ElementIntersectsSolidFilter solidFilter = new ElementIntersectsSolidFilter(columnSolid);
-            //
-            // collector.WherePasses(solidFilter);
-            // stopwatch.Stop();
-            // TaskDialog.Show("note", stopwatch.ElapsedMilliseconds.ToString());
-            // foreach (Element elem in collector)
-            // {
-            //     TaskDialog.Show("note", (elem.GetType() == typeof(Wall)).ToString());
-            // }
-
-
-            //using (Transaction tran = new Transaction(activeDoc, "default"))
-            //{
-            //    tran.Start();
-            //    DeductionOperation(activeDoc, column, wall);
-            //    SolidByUnion(new List<Solid> { columnSolid, wallSolid});
-            //    tran.Commit();
-            //}
-
+            
             return Result.Succeeded;
         }
     }

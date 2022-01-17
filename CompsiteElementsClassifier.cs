@@ -169,88 +169,11 @@ namespace SolidBoolOperationTest
             var targetDocTransform = allLinkInstanceTransforms[allDocuments.IndexOf(targetDoc)];
             
             var intersectElements = QuickFilterIntersectElements(targetDoc, originElement, targetDocTransform);
-
+            
             foreach (var intersectElement in intersectElements)
             {
                 originElement.AddIntersectElement(new PendingElement(intersectElement, targetDocTransform));
             }
-            // var originElementCutLevelNum = 
-                //     CutPolicy[(BuiltInCategory) originElement.element.Category.GetHashCode()];
-                // var intersectElementCutLevelNum = 
-                //     CutPolicy[(BuiltInCategory) intersectElement.Category.GetHashCode()];
-                // // 从原对象的标记属性中获取特殊优先级获取
-                // try
-                // {
-                //     originElementCutLevelNum = int.Parse(originElement.element.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)
-                //         .AsValueString());
-                // }
-                // catch (Exception e)
-                // {
-                //     Console.WriteLine(e);
-                // }
-                //
-                // // 从相交对象的标记属性中获取特殊优先级获取
-                // try
-                // {
-                //     intersectElementCutLevelNum = int.Parse(intersectElement.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)
-                //         .AsValueString());
-                // }
-                // catch (Exception e)
-                // {
-                //     Console.WriteLine(e);
-                // }
-                //
-                // if (originElementCutLevelNum == intersectElementCutLevelNum)
-                // {
-                //     originElement.AddIntersectElement(new PendingElement(intersectElement, originElement.TransformInWCS), AssociationTypes.Collide);
-                // }
-                // else
-                // {
-                //     if (originElementCutLevelNum < intersectElementCutLevelNum)
-                //     {
-                //         originElement.AddIntersectElement(new PendingElement(intersectElement, originElement.TransformInWCS), AssociationTypes.CutOther);
-                //     }
-                //     else
-                //     {
-                //         originElement.AddIntersectElement(new PendingElement(intersectElement, originElement.TransformInWCS), AssociationTypes.BeCutOff);
-                //     }
-                // }
-
-            // foreach (var element in intersectElements)
-            // {
-            //
-            //     Solid intersectSolid = null;
-            //     try
-            //     {
-            //
-            //         if (JoinGeometryUtils.AreElementsJoined(targetDoc, element, originElement.element))
-            //         {
-            //             using (Transaction tran = new Transaction(_activeDoc, "createNewFamilyInstance2"))
-            //             {   
-            //                 tran.Start();
-            //                 JoinGeometryUtils.UnjoinGeometry(targetDoc, element, originElement.element);
-            //                 tran.Commit();
-            //             }
-            //         }
-            //         intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(elementSolid, Tools.GetArchMainSolid(element, null), BooleanOperationsType.Intersect);
-            //         if (intersectSolid != null)
-            //         {   
-            //             FamilySymbol cutSolidFamilySymbol = CreateFamilySymbol(_activeDoc, _activeApp, intersectSolid);
-            //             using (Transaction tran = new Transaction(_activeDoc, "createNewFamilyInstance"))
-            //             {
-            //                 tran.Start();
-            //                 FamilyInstance familyInstance = _activeDoc.Create.NewFamilyInstance(intersectSolid.ComputeCentroid(), cutSolidFamilySymbol, originElement.element, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-            //                 InstanceVoidCutUtils.AddInstanceVoidCut(_activeDoc, originElement.element, familyInstance);
-            //                 tran.Commit();
-            //             }
-            //         }
-            //     }
-            //     catch (Exception e)
-            //     {   
-            //         Console.WriteLine(e.ToString());
-            //         intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(SolidUtils.CreateTransformed(elementSolid, elementSolid.GetBoundingBox().Transform.ScaleBasis(0.99999)), Tools.GetArchMainSolid(element, null), BooleanOperationsType.Intersect);
-            //     }
-        
         }
 
         private IList<Element> QuickFilterIntersectElements(Document targetDoc, PendingElement pendingElement, Transform targetDocTransform)
@@ -259,6 +182,11 @@ namespace SolidBoolOperationTest
             
             var elementSolid = pendingElement.GetPendingElementSolid();
 
+            if (elementSolid == null)
+            {
+                return new List<Element>();
+            }
+            
             if (relation == ElementAndDocRelations.ActiveElementInLinkedDoc)
             {
                 elementSolid = SolidUtils.CreateTransformed(elementSolid, targetDocTransform?.Inverse);
@@ -280,22 +208,30 @@ namespace SolidBoolOperationTest
             var outlineInWcs = new Outline(minVertexInWcs, maxVertexInWcs);
             var intersectElementsCollector = new FilteredElementCollector(targetDoc);
             var elementBoxFilter = new BoundingBoxIntersectsFilter(outlineInWcs);
-            if (targetDoc.Equals(_activeDoc))
+            try
             {
-                return intersectElementsCollector
-                    .WherePasses(elementBoxFilter)
-                    .ToList()
-                    .Where(e => e.Id != pendingElement.element.Id && targetCategories.Contains((BuiltInCategory)e.Category.GetHashCode()) && selectedElementIds.Contains(e.Id))
-                    .ToList();  
+                if (targetDoc.Equals(_activeDoc))
+                {
+                    return intersectElementsCollector
+                        .WherePasses(elementBoxFilter)
+                        .Where(e => e.Id != pendingElement.element.Id && selectedElementIds.Contains(e.Id) && e.Category != null && targetCategories.Contains((BuiltInCategory)e.Category.GetHashCode()))
+                        .ToList();  
+                }
+                else
+                {
+
+                    return intersectElementsCollector
+                        .WherePasses(elementBoxFilter)
+                        .Where(e => e.Id != pendingElement.element.Id && e.Category != null && targetCategories.Contains((BuiltInCategory)e.Category.GetHashCode()))
+                        .ToList();
+                }
             }
-            else
+            catch (Exception e)
             {
-                return intersectElementsCollector
-                    .WherePasses(elementBoxFilter)
-                    .ToList()
-                    .Where(e => e.Id != pendingElement.element.Id && targetCategories.Contains((BuiltInCategory)e.Category.GetHashCode()))
-                    .ToList();
+                Console.WriteLine(e);
+                throw;
             }
+
 
         }
 

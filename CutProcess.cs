@@ -117,12 +117,16 @@ namespace SolidBoolOperationTest
         
         private void ClassifyReadyToCreateSolid(PendingElement cuttingPendingElement, PendingElement cuttedPendingElement)
         {
-            intersectSolids.Add(new Dictionary<string, object>()
+            var intersectSolid = GetIntersectSolid(cuttingPendingElement, cuttedPendingElement);
+            if (intersectSolid != null)
             {
-                {"Document", cuttedPendingElement.element.Document},
-                {"HostCuttedPendingElement", cuttedPendingElement},
-                {"IntersectSolid", GetIntersectSolid(cuttingPendingElement, cuttedPendingElement)}
-            });
+               intersectSolids.Add(new Dictionary<string, object>()
+               {
+                   {"Document", cuttedPendingElement.element.Document},
+                   {"HostCuttedPendingElement", cuttedPendingElement},
+                   {"IntersectSolid", GetIntersectSolid(cuttingPendingElement, cuttedPendingElement)}
+               }); 
+            }
         }
         
         private Solid GetIntersectSolid(PendingElement cuttingPendingElement, PendingElement cuttedPendingElement)
@@ -162,7 +166,14 @@ namespace SolidBoolOperationTest
                 intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(scaledCuttingSolid, cuttedSolid, BooleanOperationsType.Intersect);
             }
 
-            return intersectSolid;
+            if (intersectSolid.Volume > 0)
+            {
+                return intersectSolid;
+            }
+            else
+            {
+                return null;
+            }
         }
         
         // public Solid IntersectAnalysis(Dictionary<object, List<PendingElement>> classifiedPendingElements)

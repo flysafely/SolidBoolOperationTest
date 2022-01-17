@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using SolidBoolOperationTest;
 
 namespace CommonTools
@@ -206,7 +207,7 @@ namespace CommonTools
                 {
                     var transform = Transform.CreateTranslation(-solid.ComputeCentroid());
                     var newSolid = SolidUtils.CreateTransformed(solid, transform);
-                    tran.Start();
+
                     FreeFormElement freeForm = FreeFormElement.Create(familyDoc, newSolid);
                     if (!isSolid)
                     {
@@ -220,9 +221,10 @@ namespace CommonTools
                 familyDoc.Close(false);
                 return family;
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                return null;
+                Console.WriteLine(e);
+                throw e;
             }
         }
 
@@ -465,6 +467,10 @@ namespace CommonTools
                 }
             }
             // 赛选出体积最大的一个solid作为主Soild
+            if (solids.Count < 1)
+            {
+                return null;
+            }
             double maxVolume = volumes.Max();
             int index = volumes.IndexOf(maxVolume);
             Solid maxSolid = solids[index];
@@ -504,6 +510,15 @@ namespace CommonTools
                 return familySymbol;
             }
             return null;
+        }
+        public static bool ContainProperty(this object instance, string propertyName)
+        {
+            if (instance != null && !string.IsNullOrEmpty(propertyName))
+            {
+                PropertyInfo _findedPropertyInfo = instance.GetType().GetProperty(propertyName);
+                return _findedPropertyInfo != null;
+            }
+            return false;
         }
     }
 }
