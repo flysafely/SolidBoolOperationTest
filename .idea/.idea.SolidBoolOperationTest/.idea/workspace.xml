@@ -36,10 +36,17 @@
     <breakpoint-manager>
       <breakpoints>
         <line-breakpoint enabled="true" type="DotNet Breakpoints">
-          <url>file://$PROJECT_DIR$/CompsiteElementsClassifier.cs</url>
-          <line>176</line>
-          <properties documentPath="F:\RevitProjects\SolidBoolOperationTest\CompsiteElementsClassifier.cs" initialLine="230" containingFunctionPresentation="method 'QuickFilterIntersectElements'" />
-          <option name="timeStamp" value="32" />
+          <url>file://$PROJECT_DIR$/CutProcess.cs</url>
+          <line>79</line>
+          <properties documentPath="E:\Revit2019DevProjs\SolidBoolOperationTest\CutProcess.cs" initialLine="79" containingFunctionPresentation="method 'ImplementIntersectElementsCutPolicy'">
+            <startOffsets>
+              <option value="2492" />
+            </startOffsets>
+            <endOffsets>
+              <option value="2572" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="33" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

@@ -119,7 +119,6 @@ namespace SolidBoolOperationTest
 
         private void AssociativeIntersectingElement()
         {
-            
             foreach (var document in allDocuments)
             {
                 foreach (var pendingElement in _resultElements)
@@ -214,12 +213,12 @@ namespace SolidBoolOperationTest
                 {
                     return intersectElementsCollector
                         .WherePasses(elementBoxFilter)
+                        // selectedElementIds.Contains(e.Id) 作用是控制只于被选中的对象发生相交
                         .Where(e => e.Id != pendingElement.element.Id && selectedElementIds.Contains(e.Id) && e.Category != null && targetCategories.Contains((BuiltInCategory)e.Category.GetHashCode()))
                         .ToList();  
                 }
                 else
                 {
-
                     return intersectElementsCollector
                         .WherePasses(elementBoxFilter)
                         .Where(e => e.Id != pendingElement.element.Id && e.Category != null && targetCategories.Contains((BuiltInCategory)e.Category.GetHashCode()))
@@ -231,8 +230,6 @@ namespace SolidBoolOperationTest
                 Console.WriteLine(e);
                 throw;
             }
-
-
         }
 
         public FamilySymbol CreateFamilySymbol(Document doc, Application app, Solid cutSolid)

@@ -104,8 +104,7 @@ namespace SolidBoolOperationTest
             // 从原对象的标记属性中获取特殊优先级获取
             try
             {
-                return int.Parse(pendingElement.element.get_Parameter(BuiltInParameter.ALL_MODEL_MARK)
-                    .AsValueString());
+                return int.Parse(pendingElement.element.get_Parameter(BuiltInParameter.ALL_MODEL_MARK).AsString());
                 
             }
             catch (Exception e)
