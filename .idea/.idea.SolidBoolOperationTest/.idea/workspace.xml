@@ -11,19 +11,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/4c14456319154999b7e3b4c105f953a419f8ad0/9e/f17d9cad/ElementCategoryFilter.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/4c14456319154999b7e3b4c105f953a419f8ad0/57/8a27da78/BuiltInCategory.cs" root0="SKIP_HIGHLIGHTING" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -49,29 +37,9 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="DotNet Breakpoints">
           <url>file://$PROJECT_DIR$/CompsiteElementsClassifier.cs</url>
-          <line>230</line>
-          <properties documentPath="F:\RevitProjects\SolidBoolOperationTest\CompsiteElementsClassifier.cs" initialLine="230" containingFunctionPresentation="method 'QuickFilterIntersectElements'">
-            <startOffsets>
-              <option value="9603" />
-            </startOffsets>
-            <endOffsets>
-              <option value="9624" />
-            </endOffsets>
-          </properties>
+          <line>176</line>
+          <properties documentPath="F:\RevitProjects\SolidBoolOperationTest\CompsiteElementsClassifier.cs" initialLine="230" containingFunctionPresentation="method 'QuickFilterIntersectElements'" />
           <option name="timeStamp" value="32" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DotNet Breakpoints">
-          <url>file://$PROJECT_DIR$/CommonTools.cs</url>
-          <line>225</line>
-          <properties documentPath="F:\RevitProjects\SolidBoolOperationTest\CommonTools.cs" initialLine="225" containingFunctionPresentation="method 'CreateFreeFormElementFamily'">
-            <startOffsets>
-              <option value="8675" />
-            </startOffsets>
-            <endOffsets>
-              <option value="8696" />
-            </endOffsets>
-          </properties>
-          <option name="timeStamp" value="33" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

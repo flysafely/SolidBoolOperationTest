@@ -207,7 +207,7 @@ namespace CommonTools
                 {
                     var transform = Transform.CreateTranslation(-solid.ComputeCentroid());
                     var newSolid = SolidUtils.CreateTransformed(solid, transform);
-
+                    tran.Start();
                     FreeFormElement freeForm = FreeFormElement.Create(familyDoc, newSolid);
                     if (!isSolid)
                     {
