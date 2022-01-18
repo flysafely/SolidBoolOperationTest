@@ -11,7 +11,7 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/4c14456319154999b7e3b4c105f953a419f8ad0/57/8a27da78/BuiltInCategory.cs" root0="SKIP_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/4c14456319154999b7e3b4c105f953a419f8ad0/9e/f17d9cad/ElementCategoryFilter.cs" root0="SKIP_HIGHLIGHTING" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -33,23 +33,6 @@
     <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
   </component>
   <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="DotNet Breakpoints">
-          <url>file://$PROJECT_DIR$/CutProcess.cs</url>
-          <line>79</line>
-          <properties documentPath="E:\Revit2019DevProjs\SolidBoolOperationTest\CutProcess.cs" initialLine="79" containingFunctionPresentation="method 'ImplementIntersectElementsCutPolicy'">
-            <startOffsets>
-              <option value="2492" />
-            </startOffsets>
-            <endOffsets>
-              <option value="2572" />
-            </endOffsets>
-          </properties>
-          <option name="timeStamp" value="33" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
     <pin-to-top-manager>
       <pinned-members>
         <PinnedItemInfo parentTag="Type#SolidBoolOperationTest.CompositeElementsClassifier" memberName="allDocuments" />

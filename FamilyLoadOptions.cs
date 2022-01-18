@@ -15,7 +15,8 @@ namespace SolidBoolOperationTest
             return true;
         }
 
-        public bool OnSharedFamilyFound(Family sharedFamily, bool familyInUse, out FamilySource source, out bool overwriteParameterValues)
+        public bool OnSharedFamilyFound(Family sharedFamily, bool familyInUse, out FamilySource source,
+            out bool overwriteParameterValues)
         {
             overwriteParameterValues = false;
             source = FamilySource.Family;

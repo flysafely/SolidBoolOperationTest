@@ -16,7 +16,7 @@ namespace SolidBoolOperationTest
     public class CutProcess
     {
         private Application _activeApp;
-        
+
         private Document _activeDoc;
 
         public IList<Dictionary<string, object>> intersectSolids = new List<Dictionary<string, object>>();
@@ -29,17 +29,22 @@ namespace SolidBoolOperationTest
         {
             {BuiltInCategory.OST_Walls, (int) CutOrder.Level10},
             {BuiltInCategory.OST_Floors, (int) CutOrder.Level3},
-            {BuiltInCategory.OST_Columns, (int) CutOrder.Level1},
+            {BuiltInCategory.OST_Columns, (int) CutOrder.Level2},
             {BuiltInCategory.OST_StructuralColumns, (int) CutOrder.Level1},
             {BuiltInCategory.OST_StructuralFraming, (int) CutOrder.Level2}
         };
-        
+
         public CutProcess(Application app, Document doc, Dictionary<BuiltInCategory, int> customPolicy)
         {
             _activeApp = app;
             _activeDoc = doc;
             // 初始化剪切策略
             InitCutPolicy(customPolicy);
+        }
+
+        public void DoCuttingProcess(IList<PendingElement> pendingElements)
+        {
+            ImplementIntersectElementsCutPolicy(pendingElements);
         }
 
         private void InitCutPolicy(Dictionary<BuiltInCategory, int> customPolicy)
@@ -73,25 +78,32 @@ namespace SolidBoolOperationTest
             }
 
             foreach (var pendingElement in pendingElements)
-            {   
+            {
                 foreach (var intersectPendingElement in pendingElement.IntersectEles)
                 {
-
-                    var pendingElementCutLevelNum = GetPendingElementCutOrderNumber(pendingElement);
-                    var intersectpendingElementCutLevelNum = GetPendingElementCutOrderNumber(intersectPendingElement);
+                    var pendingEleCutLevelNum = GetPendingElementCutOrderNumber(pendingElement);
+                    var interPendingEleCutLevelNum = GetPendingElementCutOrderNumber(intersectPendingElement);
                     // 从原对象的标记属性中获取特殊优先级获取
 
-                    if (pendingElementCutLevelNum == intersectpendingElementCutLevelNum)
+                    if (pendingEleCutLevelNum == interPendingEleCutLevelNum)
                     {
-                        // 同类构件相交处理
-                        collideElements.Add(new object[]{pendingElement, intersectPendingElement});
+                        // 同类构件判断其归属文档优先级
+                        var pendingEleHostDocCutLevelNum = (int) pendingElement.DocPriority;
+                        var interPendingEleHostDocCutLevelNum = (int) intersectPendingElement.DocPriority;
+                        if (pendingEleHostDocCutLevelNum > interPendingEleHostDocCutLevelNum)
+                        {
+                            ClassifyReadyToCreateSolid(intersectPendingElement, pendingElement);
+                        }
+                        else if (pendingEleHostDocCutLevelNum == interPendingEleHostDocCutLevelNum)
+                        {
+                            collideElements.Add(new object[] {pendingElement, intersectPendingElement});
+                        }
                     }
                     else
                     {
-                        if (pendingElementCutLevelNum > intersectpendingElementCutLevelNum)
+                        if (pendingEleCutLevelNum > interPendingEleCutLevelNum)
                         {
                             ClassifyReadyToCreateSolid(intersectPendingElement, pendingElement);
-
                         }
                     }
                 }
@@ -105,7 +117,6 @@ namespace SolidBoolOperationTest
             try
             {
                 return int.Parse(pendingElement.element.get_Parameter(BuiltInParameter.ALL_MODEL_MARK).AsString());
-                
             }
             catch (Exception e)
             {
@@ -113,21 +124,22 @@ namespace SolidBoolOperationTest
                 return cutLevelNum;
             }
         }
-        
-        private void ClassifyReadyToCreateSolid(PendingElement cuttingPendingElement, PendingElement cuttedPendingElement)
+
+        private void ClassifyReadyToCreateSolid(PendingElement cuttingPendingElement,
+            PendingElement cuttedPendingElement)
         {
             var intersectSolid = GetIntersectSolid(cuttingPendingElement, cuttedPendingElement);
             if (intersectSolid != null)
             {
-               intersectSolids.Add(new Dictionary<string, object>()
-               {
-                   {"Document", cuttedPendingElement.element.Document},
-                   {"HostCuttedPendingElement", cuttedPendingElement},
-                   {"IntersectSolid", GetIntersectSolid(cuttingPendingElement, cuttedPendingElement)}
-               }); 
+                intersectSolids.Add(new Dictionary<string, object>()
+                {
+                    {"Document", cuttedPendingElement.element.Document},
+                    {"HostCuttedPendingElement", cuttedPendingElement},
+                    {"IntersectSolid", GetIntersectSolid(cuttingPendingElement, cuttedPendingElement)}
+                });
             }
         }
-        
+
         private Solid GetIntersectSolid(PendingElement cuttingPendingElement, PendingElement cuttedPendingElement)
         {
             Solid intersectSolid = null;
@@ -148,33 +160,31 @@ namespace SolidBoolOperationTest
                 }
                 else
                 {
-                    cuttingSolidTransform = cuttingPendingElement.TransformInWCS.Multiply(cuttedPendingElement.TransformInWCS.Inverse);
+                    cuttingSolidTransform =
+                        cuttingPendingElement.TransformInWCS.Multiply(cuttedPendingElement.TransformInWCS.Inverse);
                 }
             }
+
             var cuttingSolid = Tools.GetArchMainSolid(cuttingPendingElement.element, cuttingSolidTransform);
             var cuttedSolid = Tools.GetArchMainSolid(cuttedPendingElement.element, null);
             try
             {
-                intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(cuttingSolid, cuttedSolid, BooleanOperationsType.Intersect);
+                intersectSolid =
+                    BooleanOperationsUtils.ExecuteBooleanOperation(cuttingSolid, cuttedSolid,
+                        BooleanOperationsType.Intersect);
             }
             catch (Exception e)
-            {   
+            {
                 Console.WriteLine(e.ToString());
                 var scaledCuttingSolid = SolidUtils.CreateTransformed(cuttingSolid,
                     cuttingSolid.GetBoundingBox().Transform.ScaleBasis(0.99999));
-                intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(scaledCuttingSolid, cuttedSolid, BooleanOperationsType.Intersect);
+                intersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(scaledCuttingSolid, cuttedSolid,
+                    BooleanOperationsType.Intersect);
             }
 
-            if (intersectSolid.Volume > 0)
-            {
-                return intersectSolid;
-            }
-            else
-            {
-                return null;
-            }
+            return intersectSolid.Volume > 0 ? intersectSolid : null;
         }
-        
+
         // public Solid IntersectAnalysis(Dictionary<object, List<PendingElement>> classifiedPendingElements)
         // {
         //     //
@@ -237,12 +247,6 @@ namespace SolidBoolOperationTest
 
                 return result;
             }
-        }
-
-        private Solid GetIntersectPart(Solid part1, Solid part2)
-        {
-            Solid result = null;
-            return result;
         }
 
         private void DeductionOperation(Document activeDoc, Element a, Element b)

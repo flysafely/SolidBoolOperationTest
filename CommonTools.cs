@@ -16,7 +16,7 @@ namespace CommonTools
             double foot = UnitUtils.ConvertToInternalUnits(value, UnitTypeId.Millimeters);
             return foot;
         }
-        
+
         public static double ToMillimeters(this double value)
         {
             double millimeter = UnitUtils.Convert(value, UnitTypeId.Feet, UnitTypeId.Millimeters);
@@ -31,8 +31,8 @@ namespace CommonTools
             if (!result)
             {
                 intValue = 100;
-
             }
+
             return intValue;
         }
 
@@ -57,7 +57,6 @@ namespace CommonTools
         /// <returns></returns>
         public static XYZ GetBothSideUnboundLinesIntersectPoint(Curve curveOne, Curve curveTwo)
         {
-
             Curve curveOneStartUnbound = Line.CreateUnbound(curveOne.GetEndPoint(0), (curveOne as Line).Direction);
             Curve curveOneEndUnbound = Line.CreateUnbound(curveOne.GetEndPoint(1), (curveOne as Line).Direction);
             Curve curveTwoStartUnbound = Line.CreateUnbound(curveTwo.GetEndPoint(0), (curveTwo as Line).Direction);
@@ -217,6 +216,7 @@ namespace CommonTools
                     }
                     tran.Commit();
                 }
+
                 Family family = familyDoc.LoadFamily(doc, new FamilyLoadOptions());
                 familyDoc.Close(false);
                 return family;
@@ -229,9 +229,11 @@ namespace CommonTools
         }
 
         public static Family LoadFamily(Document doc, string familyName)
-        {   
-            var family = new FilteredElementCollector(doc).OfClass(typeof(Family)).Select(p => p as Family).FirstOrDefault(p => p.Name == familyName);
-            string familyPath = string.Format("C:\\ProgramData\\Autodesk\\RVT 2021\\Libraries\\Chinese\\结构\\钢筋形状\\{0}.rfa", familyName);
+        {
+            var family = new FilteredElementCollector(doc).OfClass(typeof(Family)).Select(p => p as Family)
+                .FirstOrDefault(p => p.Name == familyName);
+            string familyPath =
+                string.Format("C:\\ProgramData\\Autodesk\\RVT 2021\\Libraries\\Chinese\\结构\\钢筋形状\\{0}.rfa", familyName);
             if (family == null)
             {
                 // 重新载入
@@ -247,6 +249,7 @@ namespace CommonTools
                     fs.Activate();
                 }
             }
+
             return family;
         }
 
@@ -258,9 +261,9 @@ namespace CommonTools
         /// <param name="level">标高</param>
         /// <param name="precastThickness">预制厚度</param>
         /// <param name="thickness">叠合板全厚度</param>
-        public static ElementId CreateCustomFloorslab(Document activeDoc, IList<XYZ> points, Level level, double precastThickness, double thickness)
+        public static ElementId CreateCustomFloorslab(Document activeDoc, IList<XYZ> points, Level level,
+            double precastThickness, double thickness)
         {
-
             // 构建楼板顶面轮廓线数组
             CurveArray curveArray = new CurveArray();
             curveArray.Append(Line.CreateBound(points[0], points[1]));
@@ -269,7 +272,8 @@ namespace CommonTools
             curveArray.Append(Line.CreateBound(points[3], points[0]));
 
             // 创建楼板实体
-            Floor floorslab = activeDoc.Create.NewSlab(curveArray, level, Line.CreateBound(points[0], points[1]), 0, false);
+            Floor floorslab =
+                activeDoc.Create.NewSlab(curveArray, level, Line.CreateBound(points[0], points[1]), 0, false);
             /*FamilyInstance familyInstance = activeDoc.Create.NewFamilyInstance();
             InstanceVoidCutUtils.AddInstanceVoidCut(activeDoc, floorslab, floorslab);*/
             // 获取文档中已经存在的楼板类型
@@ -288,6 +292,7 @@ namespace CommonTools
                     return floorslab.Id;
                 }
             }
+
             // 如果不存在特定厚度的楼板类型则创建新的楼板类型
             FloorType newFloorType = defaultFloorType.Duplicate(typeName) as FloorType;
             CompoundStructure cs = newFloorType.GetCompoundStructure();
@@ -300,11 +305,13 @@ namespace CommonTools
                     break;
                 }
             }
+
             cs.SetLayers(csls);
             newFloorType.SetCompoundStructure(cs);
             floorslab.FloorType = newFloorType;
             return floorslab.Id;
         }
+
         /// <summary>
         /// 设置叠合板的类型和厚度信息
         /// </summary>
@@ -344,19 +351,19 @@ namespace CommonTools
         //     newFloorType.SetCompoundStructure(cs);
         //     compositeSlab.mainFloorSlab.FloorType = newFloorType;
         // }
-
         public static Level GetLevel(Document activeDoc, double levelValue)
         {
             FilteredElementCollector collector = new FilteredElementCollector(activeDoc);
             ICollection<Element> collections = collector.OfClass(typeof(Level)).ToElements();
             foreach (Element ele in collections)
             {
-                Level level = (Level)ele;
+                Level level = (Level) ele;
                 if (level.Elevation == Tools.ToFeet(levelValue))
                 {
                     return level;
                 }
             }
+
             using (Transaction tran = new Transaction(activeDoc, "createLevel"))
             {
                 tran.Start();
@@ -398,6 +405,7 @@ namespace CommonTools
                     curveList.Add(curve);
                     continue;
                 }
+
                 if (curveEndPoint.IsAlmostEqualTo(curveList[0].GetEndPoint(0)))
                 {
                     curveList.Insert(0, curve);
@@ -420,34 +428,36 @@ namespace CommonTools
                 IList<CurveLoop> curvesFromUnused = GetCurveLoopsByCurves(unused_curves);
                 resultCurveLoops = resultCurveLoops.Concat(curvesFromUnused).ToList();
             }
+
             return resultCurveLoops;
         }
+
         public static Solid GetArchMainSolid(Element element, Transform transform)
         {
             GeometryElement geometryElement = element.get_Geometry(new Options());
             IList<Solid> solids = new List<Solid>();
             IList<double> volumes = new List<double>();
-            
+
             if (element is FamilyInstance)
             {
                 foreach (GeometryObject geoObj in geometryElement)
                 {
-
                     GeometryInstance geometryInstance = geoObj as GeometryInstance;
                     if (geometryInstance != null)
                     {
                         foreach (GeometryObject instObj in geometryInstance.SymbolGeometry)
-                        {   
+                        {
                             var solid = instObj as Solid;
-                            if (solid != null &&　solid.Volume != 0 && solid.SurfaceArea != 0 )
+                            if (solid != null && solid.Volume != 0 && solid.SurfaceArea != 0)
                             {
                                 solids.Add(SolidUtils.CreateTransformed(solid, geometryInstance.Transform));
                                 volumes.Add(solid.Volume);
                             }
                         }
                     }
+
                     Solid solidDirect = geoObj as Solid;
-                    if (solidDirect != null &&　solidDirect.Volume != 0 && solidDirect.SurfaceArea != 0 )
+                    if (solidDirect != null && solidDirect.Volume != 0 && solidDirect.SurfaceArea != 0)
                     {
                         solids.Add(solidDirect);
                         volumes.Add(solidDirect.Volume);
@@ -459,18 +469,20 @@ namespace CommonTools
                 foreach (GeometryObject geoObject in geometryElement)
                 {
                     var solid = geoObject as Solid;
-                    if(solid != null &&　solid.Volume != 0 && solid.SurfaceArea != 0 )
+                    if (solid != null && solid.Volume != 0 && solid.SurfaceArea != 0)
                     {
                         solids.Add(solid);
                         volumes.Add(solid.Volume);
                     }
                 }
             }
+
             // 赛选出体积最大的一个solid作为主Soild
             if (solids.Count < 1)
             {
                 return null;
             }
+
             double maxVolume = volumes.Max();
             int index = volumes.IndexOf(maxVolume);
             Solid maxSolid = solids[index];
@@ -483,10 +495,9 @@ namespace CommonTools
                 return SolidUtils.CreateTransformed(maxSolid, transform);
             }
         }
-        
+
         public static FamilySymbol CreateFamilySymbol(Document doc, Application app, Solid cutSolid)
         {
-
             var hollowStretch = CreateFreeFormElementFamily(doc, app, cutSolid, false);
 
             var ids = hollowStretch.GetFamilySymbolIds();
@@ -504,13 +515,17 @@ namespace CommonTools
                         {
                             familySymbol.Activate();
                         }
+
                         tran.Commit();
-                    }          
+                    }
                 }
+
                 return familySymbol;
             }
+
             return null;
         }
+
         public static bool ContainProperty(this object instance, string propertyName)
         {
             if (instance != null && !string.IsNullOrEmpty(propertyName))
@@ -518,6 +533,7 @@ namespace CommonTools
                 PropertyInfo _findedPropertyInfo = instance.GetType().GetProperty(propertyName);
                 return _findedPropertyInfo != null;
             }
+
             return false;
         }
     }
