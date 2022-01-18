@@ -19,7 +19,7 @@ namespace SolidBoolOperationTest
 
         private readonly Document _activeDoc;
 
-        private readonly IList<ElementId> selectedElementIds = new List<ElementId>();
+        private readonly List<Element> selectedElements = new List<Element>();
 
         // 使用object作为键值是为了方便后期筛选条件类型发生变化
         private IList<PendingElement> _resultElements = new List<PendingElement>();
@@ -57,7 +57,7 @@ namespace SolidBoolOperationTest
                 }
                 else
                 {
-                    selectedElementIds.Add(ele.Id);
+                    selectedElements.Add(ele);
                     _resultElements.Add(new PendingElement(ele, null, CutOrder.Level100));
                 }
             }
@@ -190,31 +190,19 @@ namespace SolidBoolOperationTest
             {
                 return new List<Element>();
             }
-
-            var elementBoundingBox = elementSolid.GetBoundingBox();
-            var boundingBoxTransform = elementBoundingBox.Transform;
-            var minVertex = elementBoundingBox.Min;
-            var maxVertex = elementBoundingBox.Max;
-            var minVertexInWcs = boundingBoxTransform.OfPoint(minVertex);
-            var maxVertexInWcs = boundingBoxTransform.OfPoint(maxVertex);
-            var outlineInWcs = new Outline(minVertexInWcs, maxVertexInWcs);
-            var intersectElementsCollector = new FilteredElementCollector(targetDoc); //List<Element> elements = allelements.FindAll(p => filter.PassesFilter(p));
-            var elementBoxFilter = new BoundingBoxIntersectsFilter(outlineInWcs);
+            ElementQuickFilter elementBoxFilter = Tools.GetBoxFilterBySolid(elementSolid, 0); 
             try
             {
                 if (targetDoc.Equals(_activeDoc))
                 {
-                    return intersectElementsCollector
-                        .WherePasses(elementBoxFilter)
-                        // selectedElementIds.Contains(e.Id) 作用是控制只于被选中的对象发生相交
-                        .Where(e => e.Id != pendingElement.element.Id && selectedElementIds.Contains(e.Id) &&
-                                    e.Category != null &&
+                    return selectedElements.FindAll(s => elementBoxFilter.PassesFilter(s))
+                        .Where(e => e.Id != pendingElement.element.Id && e.Category != null &&
                                     targetCategories.Contains((BuiltInCategory) e.Category.GetHashCode()))
                         .ToList();
                 }
                 else
                 {
-                    return intersectElementsCollector
+                    return new FilteredElementCollector(targetDoc)
                         .WherePasses(elementBoxFilter)
                         .Where(e => e.Id != pendingElement.element.Id && e.Category != null &&
                                     targetCategories.Contains((BuiltInCategory) e.Category.GetHashCode()))
@@ -224,7 +212,7 @@ namespace SolidBoolOperationTest
             catch (Exception e)
             {
                 Console.WriteLine(e);
-                throw;
+                throw e;
             }
         }
 
@@ -257,38 +245,7 @@ namespace SolidBoolOperationTest
 
             return elementSolid;
         }
-
-        public FamilySymbol CreateFamilySymbol(Document doc, Application app, Solid cutSolid)
-        {
-            var hollowStretch = Tools.CreateFreeFormElementFamily(doc, app, cutSolid, false);
-
-            var ids = hollowStretch.GetFamilySymbolIds();
-            var elementIdEnumerator = ids.GetEnumerator();
-
-            while (elementIdEnumerator.MoveNext())
-            {
-                var familySymbol = doc.GetElement(elementIdEnumerator.Current) as FamilySymbol;
-                if (familySymbol != null)
-                {
-                    using (Transaction tran = new Transaction(doc, "createNewFamilyInstance"))
-                    {
-                        tran.Start();
-                        if (!familySymbol.IsActive)
-                        {
-                            familySymbol.Activate();
-                        }
-
-                        tran.Commit();
-                    }
-                }
-
-                return familySymbol;
-            }
-
-            return null;
-        }
-
-
+        
         public IList<PendingElement> GetExistIntersectElements()
         {
             return _resultElements.Where(e => e.IntersectEles.Count > 0).ToList();

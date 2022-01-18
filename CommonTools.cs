@@ -536,5 +536,18 @@ namespace CommonTools
 
             return false;
         }
+
+        public static ElementQuickFilter GetBoxFilterBySolid(Solid targetSolid, double toleranceMM)
+        {
+            BoundingBoxXYZ elementBoundingBox = targetSolid.GetBoundingBox();
+            Transform boundingBoxTransform = elementBoundingBox.Transform;
+            XYZ minVertex = elementBoundingBox.Min;
+            XYZ maxVertex = elementBoundingBox.Max;
+            XYZ minVertexInWcs = boundingBoxTransform.OfPoint(minVertex);
+            XYZ maxVertexInWcs = boundingBoxTransform.OfPoint(maxVertex);
+            Outline outlineInWcs = new Outline(minVertexInWcs, maxVertexInWcs);
+            ElementQuickFilter elementBoxFilter = new BoundingBoxIntersectsFilter(outlineInWcs, ToFeet(toleranceMM));
+            return elementBoxFilter;
+        }
     }
 }
