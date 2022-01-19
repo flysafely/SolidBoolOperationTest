@@ -578,5 +578,31 @@ namespace CommonTools
             ElementQuickFilter elementBoxFilter = new BoundingBoxIntersectsFilter(outlineInWcs, ToFeet(toleranceMM));
             return elementBoxFilter;
         }
+
+        public static FamilySymbol GetCuttingFamilySymbol(Application activeApp, Document activeDoc, string rfaName)
+        {
+            Family cuttingFamily = LoadFamilyByFamilyName(activeApp, activeDoc, rfaName);
+            ISet<ElementId> ids = cuttingFamily.GetFamilySymbolIds();
+            var idsEnumerator = ids.GetEnumerator();
+
+            FamilySymbol familySymbol = null;
+            while (idsEnumerator.MoveNext())
+            {
+                familySymbol = activeDoc.GetElement(idsEnumerator.Current) as FamilySymbol;
+                if (familySymbol != null)
+                {
+                    using (Transaction tran = new Transaction(activeDoc, "createNewFamilyInstance"))
+                    {
+                        tran.Start();
+                        if (!familySymbol.IsActive)
+                        {
+                            familySymbol.Activate();
+                        }
+                        tran.Commit();
+                    }
+                }
+            }
+            return familySymbol;
+        }
     }
 }
