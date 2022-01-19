@@ -49,13 +49,73 @@ namespace SolidBoolOperationTest
             var cutProcess = new CutProcess(activeApp, activeDoc, CutPolicy);
             cutProcess.ImplementIntersectElementsCutPolicy(intersectResults);
 
+            Family cuttingFamily = Tools.LoadFamilyByFamilyName(activeApp, activeDoc, "CMCU自定义空心轮廓族");
+            ISet<ElementId> ids = cuttingFamily.GetFamilySymbolIds();
+            var idsEnumerator = ids.GetEnumerator();
+
+            FamilySymbol familySymbol = null;
+            while (idsEnumerator.MoveNext())
+            {
+                familySymbol = activeDoc.GetElement(idsEnumerator.Current) as FamilySymbol;
+                if (familySymbol != null)
+                {
+                    using (Transaction tran = new Transaction(activeDoc, "createNewFamilyInstance"))
+                    {
+                        tran.Start();
+                        if (!familySymbol.IsActive)
+                        {
+                            familySymbol.Activate();
+                        }
+                        tran.Commit();
+                    }
+                }
+            }
+
             foreach (var intersectSolid in cutProcess.intersectSolids
                          .Where(e => (e["Document"] as Document).Equals(activeDoc)).ToList())
             {
                 if (intersectSolid != null)
-                {
-                    FamilySymbol cutSolidFamilySymbol = Tools.CreateFamilySymbol(activeDoc, activeApp,
-                        intersectSolid["IntersectSolid"] as Solid);
+                {   
+                    Solid intersect = intersectSolid["IntersectSolid"] as Solid;
+                    FamilySymbol cutSolidFamilySymbol = familySymbol;
+                    int faceCount = intersect.Faces.Size;
+                    if (faceCount != 6)
+                    {
+                        cutSolidFamilySymbol = Tools.CreateFamilySymbol(activeDoc, activeApp, intersect);                        
+                    }
+                    else
+                    {   
+                        // cutSolidFamilySymbol = familySymbol.Duplicate(Guid.NewGuid().ToString("N").Substring(0, 6)) as FamilySymbol;
+                        var edgesEnumerator = intersect.Edges.GetEnumerator();
+                        using (Transaction tran = new Transaction(activeDoc, "createNewFamilyInstance2"))
+                        {
+                            tran.Start();
+                            while (edgesEnumerator.MoveNext())
+                            {
+                                Line line = (edgesEnumerator.Current as Edge).AsCurve() as Line;
+                                if (Math.Abs(line.Direction.Z) == 1)
+                                {
+                                    cutSolidFamilySymbol.LookupParameter("th").Set(line.Length / 2);
+                                    cutSolidFamilySymbol.LookupParameter("bh").Set(line.Length / 2);
+                                    continue;
+                                }
+                                else if (Math.Abs(line.Direction.X) == 1)
+                                {
+                                    cutSolidFamilySymbol.LookupParameter("ll").Set(line.Length / 2);
+                                    cutSolidFamilySymbol.LookupParameter("rl").Set(line.Length / 2);
+                                    continue;
+                                }
+                                else if (Math.Abs(line.Direction.Y) == 1)
+                                {
+                                    cutSolidFamilySymbol.LookupParameter("tw").Set(line.Length / 2);
+                                    cutSolidFamilySymbol.LookupParameter("bw").Set(line.Length / 2);
+                                    continue;
+                                }
+                            }
+                            tran.Commit();
+                        }
+                    }
+                    
                     using (Transaction tran = new Transaction(activeDoc, "createNewFamilyInstance"))
                     {
                         tran.Start();

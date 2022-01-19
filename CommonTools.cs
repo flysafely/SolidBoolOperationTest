@@ -253,6 +253,35 @@ namespace CommonTools
             return family;
         }
 
+        public static Family LoadFamilyByFamilyName(Application app, Document loadingDoc, string familyName)
+        {   
+            // 获取rfa文件名称
+            string familyFilePath = Path.Combine(app.FamilyTemplatePath, string.Format("{0}.rfa", familyName));
+            // 判断当前文档中是否已经加载过该族
+            var family = new FilteredElementCollector(loadingDoc).OfClass(typeof(Family)).Select(p => p as Family)
+                .FirstOrDefault(p => p.Name == familyName);
+            if (family == null)
+            {   
+                bool loadResult = false;
+                using (Transaction tran = new Transaction(loadingDoc, "空心族创建"))
+                {   
+                    tran.Start();
+                    loadResult = loadingDoc.LoadFamily(familyFilePath, new FamilyLoadOptions(), out family);
+                    tran.Commit();
+                }
+
+                if (!loadResult)
+                {
+                    throw new Exception("族加载失败!");
+                }
+                //
+                // foreach (FamilySymbol fs in family.GetFamilySymbolIds().Select(p => loadingDoc.GetElement(p)))
+                // {
+                //     fs.Activate();
+                // }
+            }
+            return family;
+        }
         /// <summary>
         /// 创建自定义预制厚度(全厚度)叠合板
         /// </summary>
