@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
@@ -14,21 +15,21 @@ using CommonTools;
 
 namespace SolidBoolOperationTest
 {
-    struct CutNewInstanceKeyInfo
+    public struct CutInstanceStruct
     {
         public Solid CuttingSolid;
         public FamilySymbol CutFamilySymbol;
         public Dictionary<Line, double> Rotation;
-        public Element HostElement;
-    };  
-    
+        public PendingElement HostElement;
+    };
+
     public class CutProcess
     {
         private Application _activeApp;
 
         private Document _activeDoc;
 
-        public IList<Dictionary<string, object>> intersectSolids = new List<Dictionary<string, object>>();
+        public List<CutInstanceStruct> CutInstances = new List<CutInstanceStruct>();
 
         // 同类型构件冲突对
         private IList<Array> collideElements = new List<Array>();
@@ -42,7 +43,7 @@ namespace SolidBoolOperationTest
             {BuiltInCategory.OST_StructuralColumns, (int) CutOrder.Level1},
             {BuiltInCategory.OST_StructuralFraming, (int) CutOrder.Level2}
         };
-        
+
         // 默认空心剪切族类familysymbol
         private FamilySymbol shareCubeFamilySymbol;
 
@@ -59,7 +60,7 @@ namespace SolidBoolOperationTest
             // 元素剪切优先级判断
             if (!ImplementIntersectElementsCutPolicy(pendingElements))
                 return;
-            
+
             shareCubeFamilySymbol = Tools.GetCuttingFamilySymbol(_activeApp, _activeDoc, cutRfaFileName);
             if (shareCubeFamilySymbol == null)
             {
@@ -74,12 +75,12 @@ namespace SolidBoolOperationTest
 
         private void CreateCutInstancesInActiveDoc()
         {
-            foreach (var intersectDic in intersectSolids.Where(e => (e["Document"] as Document).Equals(_activeDoc))
+            foreach (var cutIns in CutInstances.Where(e => e.HostElement.element.Document.Equals(_activeDoc))
                          .ToList())
             {
-                if (intersectDic != null)
+                if (cutIns.CuttingSolid != null)
                 {
-                    CutNewInstanceKeyInfo cutNewInstanceKeyInfo = GetCutFamilySymbolAndRotation(intersectDic);
+                    CutInstanceStruct cutNewInstanceKeyInfo = GetCutFamilySymbolAndRotation(cutIns);
                     using (Transaction tran = new Transaction(_activeDoc, "CreateCutInstanceInActiveDoc"))
                     {
                         tran.Start();
@@ -90,93 +91,131 @@ namespace SolidBoolOperationTest
             }
         }
 
-        private void CutHostElementWithTransformedCutFamilyInstance(CutNewInstanceKeyInfo cutNewInstanceKeyInfo)
+        private void CutHostElementWithTransformedCutFamilyInstance(CutInstanceStruct cutInsStruct)
         {
-            FamilyInstance cutInstance = _activeDoc.Create.NewFamilyInstance(cutNewInstanceKeyInfo.CuttingSolid.ComputeCentroid(), cutNewInstanceKeyInfo.CutFamilySymbol, cutNewInstanceKeyInfo.HostElement, Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-            if (cutNewInstanceKeyInfo.Rotation != null)
+            FamilyInstance cutInstance = _activeDoc.Create.NewFamilyInstance(
+                cutInsStruct.CuttingSolid.ComputeCentroid(),
+                cutInsStruct.CutFamilySymbol,
+                cutInsStruct.HostElement.element,
+                Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+
+            if (cutInsStruct.Rotation != null)
             {
-                foreach (var info in cutNewInstanceKeyInfo.Rotation)
+                foreach (var info in cutInsStruct.Rotation)
                 {
                     ElementTransformUtils.RotateElement(_activeDoc, cutInstance.Id, info.Key, info.Value);
                 }
             }
-            InstanceVoidCutUtils.AddInstanceVoidCut(_activeDoc, cutNewInstanceKeyInfo.HostElement, cutInstance);
+
+            try
+            {
+                InstanceVoidCutUtils.AddInstanceVoidCut(_activeDoc, cutInsStruct.HostElement.element, cutInstance);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
+            }
         }
-        
-        private CutNewInstanceKeyInfo GetCutFamilySymbolAndRotation(Dictionary<string, object> intersectDic)
+
+        private CutInstanceStruct GetCutFamilySymbolAndRotation(CutInstanceStruct cutInsStruct)
         {
-            CutNewInstanceKeyInfo cutNewInstanceKeyInfo;
-            cutNewInstanceKeyInfo.CuttingSolid = intersectDic["intersectSolid"] as Solid;
-            cutNewInstanceKeyInfo.HostElement = (intersectDic["HostCuttedPendingElement"] as PendingElement).element;
-            cutNewInstanceKeyInfo.Rotation = null;
-            bool isSolidCube = ConfirmSolidIsFitShareFamilySymbol(cutNewInstanceKeyInfo.CuttingSolid);
+            cutInsStruct.Rotation = null;
+            bool isSolidCube = ConfirmSolidIsFitShareFamilySymbol(cutInsStruct.CuttingSolid);
             if (!isSolidCube)
             {
-                cutNewInstanceKeyInfo.CutFamilySymbol = Tools.CreateFamilySymbol(_activeDoc, _activeApp, cutNewInstanceKeyInfo.CuttingSolid);
-                return cutNewInstanceKeyInfo;
+                cutInsStruct.CutFamilySymbol =
+                    Tools.CreateFamilySymbol(_activeDoc, _activeApp, cutInsStruct.CuttingSolid);
+                return cutInsStruct;
             }
             else
             {
                 // 确定立方体三边对应长宽高后，再确定该模式下的围绕各个面垂直轴的旋转角度
-                var rotation = GetIntersectSolidRotationInWCS(cutNewInstanceKeyInfo.CuttingSolid);
-                var edgesEnumerator = cutNewInstanceKeyInfo.CuttingSolid.Edges.GetEnumerator();
+                var rotation = GetIntersectSolidRotationInWCS(cutInsStruct.CuttingSolid);
+                var edgesEnumerator = cutInsStruct.CuttingSolid.Edges.GetEnumerator();
                 using (Transaction tran = new Transaction(_activeDoc, "共用symbol参数化"))
-                {   
+                {
                     // 确定立方体三边对应长宽高后，再确定该模式下的围绕各个面垂直轴的旋转角度
                     tran.Start();
+                    FamilySymbol newSizeFamilySymbol =
+                        shareCubeFamilySymbol.Duplicate(string.Format("HostEleID-{0}&GUID-{1}",
+                            cutInsStruct.HostElement.element.Id.IntegerValue.ToString(),
+                            Guid.NewGuid().ToString("N").Substring(0, 6))) as FamilySymbol;
                     while (edgesEnumerator.MoveNext())
                     {
                         Line line = (edgesEnumerator.Current as Edge).AsCurve() as Line;
+                        if (line == null)
+                        {
+                            continue;
+                        }
+                        if (line.Length < 1/304.8)
+                        {
+                            continue;
+                        }
                         if (Math.Abs(line.Direction.Z) == 1)
                         {
-                            shareCubeFamilySymbol.LookupParameter("th").Set(line.Length / 2);
-                            shareCubeFamilySymbol.LookupParameter("bh").Set(line.Length / 2);
+                            newSizeFamilySymbol.LookupParameter("Height").Set(line.Length / 2);
                             continue;
                         }
                         else if (Math.Abs(line.Direction.X) == 1)
                         {
-                            shareCubeFamilySymbol.LookupParameter("ll").Set(line.Length / 2);
-                            shareCubeFamilySymbol.LookupParameter("rl").Set(line.Length / 2);
+                            newSizeFamilySymbol.LookupParameter("Length").Set(line.Length / 2);
                             continue;
                         }
                         else if (Math.Abs(line.Direction.Y) == 1)
                         {
-                            shareCubeFamilySymbol.LookupParameter("tw").Set(line.Length / 2);
-                            shareCubeFamilySymbol.LookupParameter("bw").Set(line.Length / 2);
+                            newSizeFamilySymbol.LookupParameter("Width").Set(line.Length / 2);
                             continue;
                         }
                     }
                     tran.Commit();
-                    cutNewInstanceKeyInfo.CutFamilySymbol = shareCubeFamilySymbol;
-                    cutNewInstanceKeyInfo.Rotation = rotation;
-                    return cutNewInstanceKeyInfo;
+                    cutInsStruct.CutFamilySymbol = newSizeFamilySymbol;
+                    cutInsStruct.Rotation = rotation;
+                    return cutInsStruct;
                 }
             }
         }
 
         private Dictionary<Line, double> GetIntersectSolidRotationInWCS(Solid solid)
-        {   
+        {
             // 待完成
             return null;
         }
 
         private bool ConfirmSolidIsFitShareFamilySymbol(Solid solid)
         {
-            // 面数量判断
+            // 面和边数量判断
             int faceCount = solid.Faces.Size;
-            if (faceCount != 6)
+            int edgeCount = solid.Edges.Size;
+            if (edgeCount != 12)
             {
                 return false;
             }
+            else if (faceCount != 6)
+            {
+                return false;
+            }
+            else
+            {
+                // 判定每一个面是否为长方形
+                IEnumerator facesEnumerator = solid.Faces.GetEnumerator();
+                while (facesEnumerator.MoveNext())
+                {
+                    PlanarFace face = facesEnumerator.Current as PlanarFace;
+                    if (!face.GetEdgesAsCurveLoops()[0].IsRectangular(face.GetSurface() as Plane))
+                    {
+                        return false;
+                    }
+                }
+            }
+            
             // 对面平行情况判断
             return true;
-        }            
-                    
+        }
+
         private void CreateCutInstancesInLinkDoc()
         {
-            
         }
-        
+
         private void InitCutPolicy(Dictionary<BuiltInCategory, int> customPolicy)
         {
             foreach (var dicItem in customPolicy)
@@ -245,7 +284,7 @@ namespace SolidBoolOperationTest
         private int GetPendingElementCutOrderNumber(PendingElement pendingElement)
         {
             var cutLevelNum = CutPolicy[(BuiltInCategory) pendingElement.element.Category.GetHashCode()];
-            // 从原对象的标记属性中获取特殊优先级获取
+            // 从原对象的标记属性中获取特殊优先级
             try
             {
                 return int.Parse(pendingElement.element.get_Parameter(BuiltInParameter.ALL_MODEL_MARK).AsString());
@@ -263,18 +302,16 @@ namespace SolidBoolOperationTest
             var intersectSolid = GetIntersectSolid(cuttingPendingElement, cuttedPendingElement);
             if (intersectSolid != null)
             {
-                intersectSolids.Add(new Dictionary<string, object>()
-                {
-                    {"Document", cuttedPendingElement.element.Document},
-                    {"HostCuttedPendingElement", cuttedPendingElement},
-                    {"IntersectSolid", GetIntersectSolid(cuttingPendingElement, cuttedPendingElement)}
-                });
+                CutInstanceStruct cutInstanceStruct = new CutInstanceStruct();
+                cutInstanceStruct.HostElement = cuttedPendingElement;
+                cutInstanceStruct.CuttingSolid = GetIntersectSolid(cuttingPendingElement, cuttedPendingElement);
+                CutInstances.Add(cutInstanceStruct);
             }
         }
 
         private Solid GetIntersectSolid(PendingElement cuttingPendingElement, PendingElement cuttedPendingElement)
         {
-            Solid intersectSolid = null;
+            Solid intersectSolid;
             var cuttingHostDoc = cuttingPendingElement.element.Document;
             var cuttedHostDoc = cuttedPendingElement.element.Document;
 

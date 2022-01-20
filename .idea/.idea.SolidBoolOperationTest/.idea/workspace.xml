@@ -10,8 +10,12 @@
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
-  <component name="HighlightingSettingsPerFile">
-    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/4c14456319154999b7e3b4c105f953a419f8ad0/57/8a27da78/BuiltInCategory.cs" root0="SKIP_HIGHLIGHTING" />
+  <component name="DisabledMethodsStorage">
+    <option name="disabledMethods">
+      <set>
+        <option value="RevitAPI : Autodesk.Revit.DB.Element : get_ParametersMap ()" />
+      </set>
+    </option>
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -33,6 +37,62 @@
     <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
   </component>
   <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/SolidBoolOperations.cs</url>
+          <line>49</line>
+          <properties documentPath="F:\RevitProjects\SolidBoolOperationTest\SolidBoolOperations.cs" initialLine="49" containingFunctionPresentation="method 'Execute'">
+            <startOffsets>
+              <option value="1994" />
+            </startOffsets>
+            <endOffsets>
+              <option value="2056" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/CompsiteElementsClassifier.cs</url>
+          <line>50</line>
+          <properties documentPath="F:\RevitProjects\SolidBoolOperationTest\CompsiteElementsClassifier.cs" initialLine="50" containingFunctionPresentation="method 'ClassifyElement'">
+            <startOffsets>
+              <option value="1535" />
+            </startOffsets>
+            <endOffsets>
+              <option value="1566" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="2" />
+        </line-breakpoint>
+        <line-breakpoint type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/CompsiteElementsClassifier.cs</url>
+          <line>42</line>
+          <properties documentPath="F:\RevitProjects\SolidBoolOperationTest\CompsiteElementsClassifier.cs" initialLine="42" containingFunctionPresentation="constructor 'CompositeElementsClassifier'">
+            <startOffsets>
+              <option value="1227" />
+            </startOffsets>
+            <endOffsets>
+              <option value="1260" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/CutProcess.cs</url>
+          <line>122</line>
+          <properties documentPath="F:\RevitProjects\SolidBoolOperationTest\CutProcess.cs" initialLine="121" containingFunctionPresentation="method 'GetCutFamilySymbolAndRotation'">
+            <startOffsets>
+              <option value="4253" />
+            </startOffsets>
+            <endOffsets>
+              <option value="4334" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="9" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
     <pin-to-top-manager>
       <pinned-members>
         <PinnedItemInfo parentTag="Type#SolidBoolOperationTest.CompositeElementsClassifier" memberName="allDocuments" />

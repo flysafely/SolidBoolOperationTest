@@ -75,7 +75,6 @@ F:\RevitProjects\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.csproj.
 F:\RevitProjects\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.csproj.CopyComplete
 F:\RevitProjects\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.dll
 F:\RevitProjects\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.pdb
-F:\RevitProjects\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.csproj.AssemblyReference.cache
 E:\Revit2019DevProjs\SolidBoolOperationTest\bin\Debug\SolidBoolOperationTest.dll
 E:\Revit2019DevProjs\SolidBoolOperationTest\bin\Debug\SolidBoolOperationTest.pdb
 E:\Revit2019DevProjs\SolidBoolOperationTest\bin\Debug\AdpSDKCSharpWrapper.dll
@@ -152,3 +151,4 @@ E:\Revit2019DevProjs\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.csp
 E:\Revit2019DevProjs\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.csproj.CopyComplete
 E:\Revit2019DevProjs\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.dll
 E:\Revit2019DevProjs\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.pdb
+F:\RevitProjects\SolidBoolOperationTest\obj\Debug\SolidBoolOperationTest.csproj.AssemblyReference.cache

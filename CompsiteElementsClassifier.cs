@@ -72,8 +72,11 @@ namespace SolidBoolOperationTest
                 AnalysisNonNestedElements(revitLinkElement, _resultElements);
             }
 
-            // 由于嵌套和非嵌套链接文件在当前文件中都能直接获取到，所以需要在分析嵌套链接文件时候排除非嵌套的链接，减少重复操作
-            AnalysisNestedElements(outsideRevitLinkIds, outsideRevitLinkNames, _resultElements);
+            if (revitLinkInActiveDoc.Count > 0)
+            {
+                // 由于嵌套和非嵌套链接文件在当前文件中都能直接获取到，所以需要在分析嵌套链接文件时候排除非嵌套的链接，减少重复操作
+                AnalysisNestedElements(outsideRevitLinkIds, outsideRevitLinkNames, _resultElements);
+            }
         }
 
         private void AnalysisNonNestedElements(Element revitLinkEle, IList<PendingElement> tempList)
