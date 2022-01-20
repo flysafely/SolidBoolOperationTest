@@ -177,37 +177,78 @@ namespace SolidBoolOperationTest
 
         private Dictionary<Line, double> GetIntersectSolidRotationInWCS(Solid solid)
         {
+            // 获取成对的面，来获取实际立方体的尺寸
+            IEnumerator facesEnumerator = solid.Faces.GetEnumerator();
+
+            int[] planarFacesOne;
+            int[] planarFacesTwo;
+            int[] planarFacesThree;
+
+            List<int> unusedIndexs = new List<int>(){0, 1, 2, 3, 4, 5};
+            for (int i = 0; i < solid.Faces.Size; i++)
+            {
+                for (int j = i + 1; j < solid.Faces.Size; j++)
+                {
+                    if ((solid.Faces.get_Item(i) as PlanarFace).FaceNormal.IsAlmostEqualTo(-(solid.Faces.get_Item(j) as PlanarFace).FaceNormal))
+                    {
+                        unusedIndexs.Remove(i);
+                        unusedIndexs.Remove(j);
+                        planarFacesOne = new int[]{i, j};
+                    }
+                }
+            }
+
+            for (int i = 0; i < unusedIndexs.Count; i++)
+            {
+                for (int j = i + 1; i < unusedIndexs.Count; i++)
+                {
+                    if ((solid.Faces.get_Item(unusedIndexs[i]) as PlanarFace).FaceNormal.IsAlmostEqualTo(
+                            -(solid.Faces.get_Item(unusedIndexs[j]) as PlanarFace).FaceNormal))
+                    {
+                        unusedIndexs.Remove(unusedIndexs[i]);
+                        unusedIndexs.Remove(unusedIndexs[j]);
+                        planarFacesTwo = new int[]{unusedIndexs[i], unusedIndexs[j]};
+                    }
+                }
+            }
+
+            planarFacesThree = new int[] {unusedIndexs[0], unusedIndexs[1]};
+            
+            // Plane planarFacesOne1 = solid.Faces.get_Item(planarFacesOne?planarFacesOne[0]:plan) as PlanarFace
+            
+            // while (facesEnumerator.MoveNext())
+            // {
+            //     PlanarFace planarface = facesEnumerator.Current as PlanarFace;
+            //     if (planarface.FaceNormal)
+            //     {
+            //         return false;
+            //     }
+            // }
+            
+            XYZ rotatedPoint = solid.ComputeCentroid();
+            Plane planeYZ = Plane.CreateByThreePoints(rotatedPoint, rotatedPoint - new XYZ(0, 500, 0), 
+                rotatedPoint - new XYZ(0, 0, 500));
+            Plane planeXZ = Plane.CreateByThreePoints(rotatedPoint, rotatedPoint - new XYZ(500, 0, 0),
+                rotatedPoint - new XYZ(0, 0, 500));
+            Plane planeXY = Plane.CreateByThreePoints(rotatedPoint, rotatedPoint - new XYZ(500, 0, 0),
+                rotatedPoint - new XYZ(0, 500, 0));
             // 待完成
             return null;
         }
 
         private bool ConfirmSolidIsFitShareFamilySymbol(Solid solid)
         {
-            // 面和边数量判断
-            int faceCount = solid.Faces.Size;
-            int edgeCount = solid.Edges.Size;
-            if (edgeCount != 12)
+            
+            // 判定每一个面是否为长方形
+            IEnumerator facesEnumerator = solid.Faces.GetEnumerator();
+            while (facesEnumerator.MoveNext())
             {
-                return false;
-            }
-            else if (faceCount != 6)
-            {
-                return false;
-            }
-            else
-            {
-                // 判定每一个面是否为长方形
-                IEnumerator facesEnumerator = solid.Faces.GetEnumerator();
-                while (facesEnumerator.MoveNext())
+                PlanarFace face = facesEnumerator.Current as PlanarFace;
+                if (!face.GetEdgesAsCurveLoops()[0].IsRectangular(face.GetSurface() as Plane))
                 {
-                    PlanarFace face = facesEnumerator.Current as PlanarFace;
-                    if (!face.GetEdgesAsCurveLoops()[0].IsRectangular(face.GetSurface() as Plane))
-                    {
-                        return false;
-                    }
+                    return false;
                 }
             }
-            
             // 对面平行情况判断
             return true;
         }
