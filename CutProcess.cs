@@ -160,6 +160,9 @@ namespace SolidBoolOperationTest
                             cutInsStruct.HostElement.element.Id.IntegerValue.ToString(),
                             Guid.NewGuid().ToString("N").Substring(0, 6))) as FamilySymbol;
                     // 设置空心族参数值
+                    newSizeFamilySymbol.LookupParameter("Length").Set(cutInsStruct.Length);
+                    newSizeFamilySymbol.LookupParameter("Width").Set(cutInsStruct.Width);
+                    newSizeFamilySymbol.LookupParameter("Height").Set(cutInsStruct.Height);
                     // ...
                     tran.Commit();
                     
