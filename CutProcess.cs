@@ -26,7 +26,7 @@ namespace SolidBoolOperationTest
         public Solid OriginCutSolid;
         public AssociationTypes Relation;
         public FamilySymbol CutFamilySymbol;
-        public Dictionary<Line, double> Rotations;
+        public Dictionary<object, double> Rotations;
         public PendingElement CuttingElement;
         public PendingElement HostElement;
     };
@@ -112,9 +112,9 @@ namespace SolidBoolOperationTest
             
             foreach (var rotationDic in cutInsStruct.Rotations)
             {
-                if (rotationDic.Value != 0)
+                if (rotationDic.Key != null && rotationDic.Value != 0)
                 {
-                    ElementTransformUtils.RotateElement(_activeDoc, cutInstance.Id, rotationDic.Key, rotationDic.Value);
+                    ElementTransformUtils.RotateElement(_activeDoc, cutInstance.Id, rotationDic.Key as Line, rotationDic.Value);
                 }
             }
 
@@ -235,8 +235,15 @@ namespace SolidBoolOperationTest
             // 获取质心与质心投影到面上点的线段
             Line originXForwardLine = Line.CreateBound(rotatedPoint, rotatedPoint + originRightFace.FaceNormal) ?? throw new ArgumentNullException("Line.CreateBound(rotatedPoint, originRightFace.Project(rotatedPoint).XYZPoint)");
             Line originZForwardLine = Line.CreateBound(rotatedPoint, rotatedPoint + originTopFace.FaceNormal) ?? throw new ArgumentNullException("Line.CreateBound(rotatedPoint, originTopFace.Project(rotatedPoint).XYZPoint)");
-            
-            cutInstanceStruct.Rotations.Add(Line.CreateBound(rotatedPoint, rotatedPoint + originXForwardLine.Direction.CrossProduct(xForwardLine.Direction)), originXForwardLine.Direction.AngleTo(xForwardLine.Direction));
+
+            if (originXForwardLine.Direction.CrossProduct(xForwardLine.Direction).IsZeroLength())
+            {
+                cutInstanceStruct.Rotations.Add(null, 0);
+            }
+            else
+            {
+                cutInstanceStruct.Rotations.Add(Line.CreateBound(rotatedPoint, rotatedPoint + originXForwardLine.Direction.CrossProduct(xForwardLine.Direction)), originXForwardLine.Direction.AngleTo(xForwardLine.Direction));
+            }
             Transform firstTransform = Transform.CreateRotation(originXForwardLine.Direction.CrossProduct(xForwardLine.Direction),
                 originXForwardLine.Direction.AngleTo(xForwardLine.Direction));
             Solid tempSolid = SolidUtils.CreateTransformed(cutInstanceStruct.OriginCutSolid, firstTransform);
