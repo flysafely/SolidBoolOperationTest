@@ -2,8 +2,8 @@
 {
     public enum AssociationTypes
     {
-        CutOther = 0, // 减
-        BeCutOff, // 被减
+        Cut = 0, // 减
+        Join, // 连接
         Collide // 冲突
     }
 }
