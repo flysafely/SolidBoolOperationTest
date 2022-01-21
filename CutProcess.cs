@@ -15,14 +15,25 @@ using CommonTools;
 
 namespace SolidBoolOperationTest
 {
+    public struct RotateAxisStruct
+    {
+        public Line RotateLine;
+        public double RotateAngle;
+    }
+    
+    public struct CubicSolidStruct
+    {
+        public Dictionary<string, RotateAxisStruct> XYZRotation;
+    }
+    
     public struct CutInstanceStruct
     {
         public Solid CuttingSolid;
         public FamilySymbol CutFamilySymbol;
-        public Dictionary<Line, double> Rotation;
+        public CubicSolidStruct CubicSolidInfo;
         public PendingElement HostElement;
     };
-
+    
     public class CutProcess
     {
         private Application _activeApp;
@@ -80,7 +91,7 @@ namespace SolidBoolOperationTest
             {
                 if (cutIns.CuttingSolid != null)
                 {
-                    CutInstanceStruct cutNewInstanceKeyInfo = GetCutFamilySymbolAndRotation(cutIns);
+                    CutInstanceStruct cutNewInstanceKeyInfo = GetCutNewInstanceKeyInfo(cutIns);
                     using (Transaction tran = new Transaction(_activeDoc, "CreateCutInstanceInActiveDoc"))
                     {
                         tran.Start();
@@ -91,6 +102,11 @@ namespace SolidBoolOperationTest
             }
         }
 
+        private void CreateCutInstancesInLinkDoc()
+        {
+            
+        }
+        
         private void CutHostElementWithTransformedCutFamilyInstance(CutInstanceStruct cutInsStruct)
         {
             FamilyInstance cutInstance = _activeDoc.Create.NewFamilyInstance(
@@ -98,12 +114,12 @@ namespace SolidBoolOperationTest
                 cutInsStruct.CutFamilySymbol,
                 cutInsStruct.HostElement.element,
                 Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-
-            if (cutInsStruct.Rotation != null)
+            
+            foreach (var rotationInfo in cutInsStruct.CubicSolidInfo.XYZRotation)
             {
-                foreach (var info in cutInsStruct.Rotation)
+                if (rotationInfo.Value.RotateAngle != 0)
                 {
-                    ElementTransformUtils.RotateElement(_activeDoc, cutInstance.Id, info.Key, info.Value);
+                    ElementTransformUtils.RotateElement(_activeDoc, cutInstance.Id, rotationInfo.Value.RotateLine, rotationInfo.Value.RotateAngle);
                 }
             }
 
@@ -117,9 +133,8 @@ namespace SolidBoolOperationTest
             }
         }
 
-        private CutInstanceStruct GetCutFamilySymbolAndRotation(CutInstanceStruct cutInsStruct)
+        private CutInstanceStruct GetCutNewInstanceKeyInfo(CutInstanceStruct cutInsStruct)
         {
-            cutInsStruct.Rotation = null;
             bool isSolidCube = ConfirmSolidIsFitShareFamilySymbol(cutInsStruct.CuttingSolid);
             if (!isSolidCube)
             {
@@ -130,8 +145,14 @@ namespace SolidBoolOperationTest
             else
             {
                 // 确定立方体三边对应长宽高后，再确定该模式下的围绕各个面垂直轴的旋转角度
-                var rotation = GetIntersectSolidRotationInWCS(cutInsStruct.CuttingSolid);
-                var edgesEnumerator = cutInsStruct.CuttingSolid.Edges.GetEnumerator();
+                var cubicSolidInfos = GetIntersectCubicSolidInfos(cutInsStruct.CuttingSolid);
+                foreach (var axisInfo in cubicSolidInfos.XYZRotation)
+                {
+                    if (axisInfo.Value.RotateLine == null)
+                    {
+                        return new CutInstanceStruct();
+                    }
+                }
                 using (Transaction tran = new Transaction(_activeDoc, "共用symbol参数化"))
                 {
                     // 确定立方体三边对应长宽高后，再确定该模式下的围绕各个面垂直轴的旋转角度
@@ -140,105 +161,96 @@ namespace SolidBoolOperationTest
                         shareCubeFamilySymbol.Duplicate(string.Format("HostEleID-{0}&GUID-{1}",
                             cutInsStruct.HostElement.element.Id.IntegerValue.ToString(),
                             Guid.NewGuid().ToString("N").Substring(0, 6))) as FamilySymbol;
-                    while (edgesEnumerator.MoveNext())
-                    {
-                        Line line = (edgesEnumerator.Current as Edge).AsCurve() as Line;
-                        if (line == null)
-                        {
-                            continue;
-                        }
-                        if (line.Length < 1/304.8)
-                        {
-                            continue;
-                        }
-                        if (Math.Abs(line.Direction.Z) == 1)
-                        {
-                            newSizeFamilySymbol.LookupParameter("Height").Set(line.Length / 2);
-                            continue;
-                        }
-                        else if (Math.Abs(line.Direction.X) == 1)
-                        {
-                            newSizeFamilySymbol.LookupParameter("Length").Set(line.Length / 2);
-                            continue;
-                        }
-                        else if (Math.Abs(line.Direction.Y) == 1)
-                        {
-                            newSizeFamilySymbol.LookupParameter("Width").Set(line.Length / 2);
-                            continue;
-                        }
-                    }
                     tran.Commit();
+                    
                     cutInsStruct.CutFamilySymbol = newSizeFamilySymbol;
-                    cutInsStruct.Rotation = rotation;
+                    cutInsStruct.CubicSolidInfo = cubicSolidInfos;
                     return cutInsStruct;
                 }
             }
         }
 
-        private Dictionary<Line, double> GetIntersectSolidRotationInWCS(Solid solid)
+        private CubicSolidStruct GetIntersectCubicSolidInfos(Solid solid)
         {
-            // 获取成对的面，来获取实际立方体的尺寸
-            IEnumerator facesEnumerator = solid.Faces.GetEnumerator();
-
-            int[] planarFacesOne;
-            int[] planarFacesTwo;
-            int[] planarFacesThree;
-
-            List<int> unusedIndexs = new List<int>(){0, 1, 2, 3, 4, 5};
-            for (int i = 0; i < solid.Faces.Size; i++)
-            {
-                for (int j = i + 1; j < solid.Faces.Size; j++)
-                {
-                    if ((solid.Faces.get_Item(i) as PlanarFace).FaceNormal.IsAlmostEqualTo(-(solid.Faces.get_Item(j) as PlanarFace).FaceNormal))
-                    {
-                        unusedIndexs.Remove(i);
-                        unusedIndexs.Remove(j);
-                        planarFacesOne = new int[]{i, j};
-                    }
-                }
-            }
-
-            for (int i = 0; i < unusedIndexs.Count; i++)
-            {
-                for (int j = i + 1; i < unusedIndexs.Count; i++)
-                {
-                    if ((solid.Faces.get_Item(unusedIndexs[i]) as PlanarFace).FaceNormal.IsAlmostEqualTo(
-                            -(solid.Faces.get_Item(unusedIndexs[j]) as PlanarFace).FaceNormal))
-                    {
-                        unusedIndexs.Remove(unusedIndexs[i]);
-                        unusedIndexs.Remove(unusedIndexs[j]);
-                        planarFacesTwo = new int[]{unusedIndexs[i], unusedIndexs[j]};
-                    }
-                }
-            }
-
-            planarFacesThree = new int[] {unusedIndexs[0], unusedIndexs[1]};
-            
-            // Plane planarFacesOne1 = solid.Faces.get_Item(planarFacesOne?planarFacesOne[0]:plan) as PlanarFace
-            
-            // while (facesEnumerator.MoveNext())
-            // {
-            //     PlanarFace planarface = facesEnumerator.Current as PlanarFace;
-            //     if (planarface.FaceNormal)
-            //     {
-            //         return false;
-            //     }
-            // }
-            
             XYZ rotatedPoint = solid.ComputeCentroid();
-            Plane planeYZ = Plane.CreateByThreePoints(rotatedPoint, rotatedPoint - new XYZ(0, 500, 0), 
-                rotatedPoint - new XYZ(0, 0, 500));
-            Plane planeXZ = Plane.CreateByThreePoints(rotatedPoint, rotatedPoint - new XYZ(500, 0, 0),
-                rotatedPoint - new XYZ(0, 0, 500));
-            Plane planeXY = Plane.CreateByThreePoints(rotatedPoint, rotatedPoint - new XYZ(500, 0, 0),
-                rotatedPoint - new XYZ(0, 500, 0));
+            
+            List<PlanarFace[]> parallelFacesTwain = Tools.GetSolidParallelFaces(solid);
+            
+            CubicSolidStruct cubicSolidStruct = new CubicSolidStruct();
+            cubicSolidStruct.XYZRotation = new Dictionary<string, RotateAxisStruct>();
+            
+            // Solid尺寸获取
+            foreach (var planarFaces in parallelFacesTwain)
+            {
+                XYZ projectPointOne = planarFaces[0].Project(rotatedPoint).XYZPoint;
+                XYZ projectPointTwo = planarFaces[1].Project(rotatedPoint).XYZPoint;
+                Line LineCrossCentroid;
+                try
+                {
+                    LineCrossCentroid = Line.CreateBound(projectPointOne, projectPointTwo);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    return cubicSolidStruct;
+                }
+                if (LineCrossCentroid.Length < Tools.ToFeet(1))
+                {
+                    return cubicSolidStruct;
+                }
+
+                try
+                {
+                    RotateAxisStruct rotateAxisStruct = new RotateAxisStruct();
+                    rotateAxisStruct.RotateLine = LineCrossCentroid;
+                    rotateAxisStruct.RotateAngle = 0;
+                    if (planarFaces[1].FaceNormal.IsAlmostEqualTo(new XYZ(0, 0, 1)) ||
+                        planarFaces[1].FaceNormal.IsAlmostEqualTo(new XYZ(0, 0, -1)))
+                    {
+                        cubicSolidStruct.XYZRotation.Add("Z", rotateAxisStruct);
+                    }
+                    else
+                    {
+                        if (cubicSolidStruct.XYZRotation.ContainsKey("X"))
+                        {
+                            if (cubicSolidStruct.XYZRotation["X"].RotateLine?.Length < LineCrossCentroid.Length)
+                            {
+                                cubicSolidStruct.XYZRotation["Y"] = cubicSolidStruct.XYZRotation["X"];
+                                cubicSolidStruct.XYZRotation["X"] = rotateAxisStruct;
+                            }
+                            else
+                            {
+                                cubicSolidStruct.XYZRotation.Add("Y", rotateAxisStruct);
+                            }
+                        }
+                        else
+                        {
+                            cubicSolidStruct.XYZRotation.Add("X", rotateAxisStruct);
+                        }
+                    }
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    return new CubicSolidStruct();
+                }
+            }
+            // 围绕Z轴旋转角度, 以长度边与X轴的夹角，作为旋转角
+            // 旋转基准线
+            Line baseRotateLine = Line.CreateBound(rotatedPoint, rotatedPoint + new XYZ(cubicSolidStruct.XYZRotation["X"].RotateLine.Length / 2, 0, 0));
+            Line rotateLine =
+                Line.CreateBound(rotatedPoint, cubicSolidStruct.XYZRotation["X"].RotateLine.GetEndPoint(1));
+            if (rotateLine.GetEndPoint(1).IsAlmostEqualTo(baseRotateLine.GetEndPoint(1)))
+            {
+                cubicSolidStruct.XYZRotation["Z"].RotateAngle.se;
+            }
+            if(baseRotateLine.GetEndPoint(1).Y <= rotateLine.GetEndPoint(1).Y)
             // 待完成
-            return null;
+            return cubicSolidStruct;
         }
 
         private bool ConfirmSolidIsFitShareFamilySymbol(Solid solid)
         {
-            
             // 判定每一个面是否为长方形
             IEnumerator facesEnumerator = solid.Faces.GetEnumerator();
             while (facesEnumerator.MoveNext())
@@ -249,14 +261,21 @@ namespace SolidBoolOperationTest
                     return false;
                 }
             }
+            List<PlanarFace[]> parallelFacesTwain = Tools.GetSolidParallelFaces(solid);
+            
+            if (parallelFacesTwain.Count != 3)
+                return false;
+            foreach (var planarFaces in parallelFacesTwain)
+            {
+                if (planarFaces[1].FaceNormal.IsAlmostEqualTo(new XYZ(0, 0, 1)) || planarFaces[1].FaceNormal.IsAlmostEqualTo(new XYZ(0, 0, -1)))
+                {
+                    return true;
+                }
+            }
             // 对面平行情况判断
             return true;
         }
-
-        private void CreateCutInstancesInLinkDoc()
-        {
-        }
-
+        
         private void InitCutPolicy(Dictionary<BuiltInCategory, int> customPolicy)
         {
             foreach (var dicItem in customPolicy)

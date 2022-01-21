@@ -604,5 +604,39 @@ namespace CommonTools
             }
             return familySymbol;
         }
+
+        public static List<PlanarFace[]> GetSolidParallelFaces(Solid solid)
+        {
+            List<PlanarFace[]> parallelFacesTwain = new List<PlanarFace[]>();
+            List<int> usedIndexs = new List<int>();
+            for (int i = 0; i < solid.Faces.Size; i++)
+            {   
+                if (usedIndexs.Contains(i))
+                    continue;
+                for (int j = i + 1; j < solid.Faces.Size; j++)
+                {
+                    if (usedIndexs.Contains(j))
+                        continue;
+                    if ((solid.Faces.get_Item(i) as PlanarFace).FaceNormal.IsAlmostEqualTo(-(solid.Faces.get_Item(j) as PlanarFace).FaceNormal))
+                    {
+                        usedIndexs.Add(i);
+                        usedIndexs.Add(j);
+                        parallelFacesTwain.Add(new []{solid.Faces.get_Item(i) as PlanarFace, solid.Faces.get_Item(j) as PlanarFace});
+                    }
+                }
+            }
+            return parallelFacesTwain;
+        }
+        public static XYZ GetProjectPoint(Plane plane, XYZ xyz)
+        {
+            Transform tf = Transform.Identity;
+            tf.BasisX = plane.XVec;
+            tf.BasisY = plane.YVec;
+            tf.BasisZ = plane.Normal;
+            tf.Origin = plane.Origin;
+            XYZ p = tf.Inverse.OfPoint(xyz);
+            p = new XYZ(p.X, p.Y, 0);
+            return tf.OfPoint(p);
+        }
     }
 }
