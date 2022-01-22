@@ -51,6 +51,7 @@
     <Compile Include="AssociationTypes.cs" />
     <Compile Include="CommonTools.cs" />
     <Compile Include="CompsiteElementsClassifier.cs" />
+    <Compile Include="CutInstanceInfo.cs" />
     <Compile Include="CutOrder.cs" />
     <Compile Include="CutProcess.cs" />
     <Compile Include="ElementAndDocRelations.cs" />

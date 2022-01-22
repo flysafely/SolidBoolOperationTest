@@ -18,18 +18,23 @@ using CommonTools;
 namespace SolidBoolOperationTest
 {
     
-    public struct CutInstanceStruct
-    {
-        public double Length;
-        public double Width;
-        public double Height;
-        public Solid OriginCutSolid;
-        public AssociationTypes Relation;
-        public FamilySymbol CutFamilySymbol;
-        public Dictionary<object, double> Rotations;
-        public PendingElement CuttingElement;
-        public PendingElement HostElement;
-    };
+    // public struct CutInstanceStruct
+    // {
+    //     public double Length;
+    //     public double Width;
+    //     public double Height;
+    //     public Solid OriginCutSolid;
+    //     public AssociationTypes Relation;
+    //     public FamilySymbol CutFamilySymbol;
+    //     public Dictionary<object, double> Rotations;
+    //     public PendingElement CuttingElement;
+    //     public PendingElement HostElement;
+    //
+    //     public void initRotations()
+    //     {
+    //         Rotations = new Dictionary<object, double>();
+    //     }
+    // };
     
     public class CutProcess
     {
@@ -39,7 +44,7 @@ namespace SolidBoolOperationTest
 
         private string _cutRfaFileName;
 
-        public List<CutInstanceStruct> cutInstanceStructs = new List<CutInstanceStruct>();
+        public List<CutInstance> cutInstances = new List<CutInstance>();
         
         // 默认剪切策略(结构(柱>梁)>建筑)
         private Dictionary<BuiltInCategory, int> CutPolicy = new Dictionary<BuiltInCategory, int>
@@ -76,16 +81,16 @@ namespace SolidBoolOperationTest
         private void CreateCutInstancesInActiveDoc()
         {
             // 找出真实需要剪切的相交Solid
-            foreach (var cutIns in cutInstanceStructs.Where(e => e.HostElement.element.Document.Equals(_activeDoc) && e.Relation == AssociationTypes.Cut)
+            foreach (var cutIns in cutInstances.Where(e => e.BeCutElement.element.Document.Equals(_activeDoc) && e.Relation == AssociationTypes.Cut)
                          .ToList())
             {
                 if (cutIns.OriginCutSolid != null)
                 {
-                    CutInstanceStruct cutNewInstanceKeyInfo = GetCutNewInstanceKeyInfo(cutIns);
+                    GetCutNewInstanceKeyInfo(cutIns);
                     using (Transaction tran = new Transaction(_activeDoc, "CreateCutInstanceInActiveDoc"))
                     {
                         tran.Start();
-                        CutHostElementWithTransformedCutFamilyInstance(cutNewInstanceKeyInfo);
+                        CutHostElementWithTransformedCutFamilyInstance(cutIns);
                         tran.Commit();
                     }
                 }
@@ -102,25 +107,34 @@ namespace SolidBoolOperationTest
             // 处理发生冲突的元素的逻辑
         }
         
-        private void CutHostElementWithTransformedCutFamilyInstance(CutInstanceStruct cutInsStruct)
+        private void CutHostElementWithTransformedCutFamilyInstance(CutInstance cutIns)
         {
-            FamilyInstance cutInstance = _activeDoc.Create.NewFamilyInstance(
-                cutInsStruct.OriginCutSolid.ComputeCentroid(),
-                cutInsStruct.CutFamilySymbol,
-                cutInsStruct.HostElement.element,
-                Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
-            
-            foreach (var rotationDic in cutInsStruct.Rotations)
+            if (cutIns.CutFamilySymbol == null)
             {
-                if (rotationDic.Key != null && rotationDic.Value != 0)
+                return;
+            }
+            
+            FamilyInstance cutInstance = _activeDoc.Create.NewFamilyInstance(
+                cutIns.OriginCutSolid.ComputeCentroid(),
+                cutIns.CutFamilySymbol,
+                cutIns.BeCutElement.element,
+                Autodesk.Revit.DB.Structure.StructuralType.NonStructural);
+            cutIns.eleId = cutInstance.Id;
+                                
+            if (cutIns.Rotations != null)
+            {
+                foreach (var rotationDic in cutIns.Rotations)
                 {
-                    ElementTransformUtils.RotateElement(_activeDoc, cutInstance.Id, rotationDic.Key as Line, rotationDic.Value);
+                    if (rotationDic.Key != null && rotationDic.Value != 0)
+                    {
+                        ElementTransformUtils.RotateElement(_activeDoc, cutIns.eleId, rotationDic.Key,
+                                rotationDic.Value);
+                    }
                 }
             }
-
             try
             {
-                InstanceVoidCutUtils.AddInstanceVoidCut(_activeDoc, cutInsStruct.HostElement.element, cutInstance);
+                InstanceVoidCutUtils.AddInstanceVoidCut(_activeDoc, cutIns.BeCutElement.element, cutInstance);
             }
             catch (Exception e)
             {
@@ -128,14 +142,13 @@ namespace SolidBoolOperationTest
             }
         }
 
-        private CutInstanceStruct GetCutNewInstanceKeyInfo(CutInstanceStruct cutInsStruct)
+        private void GetCutNewInstanceKeyInfo(CutInstance cutIns)
         {
-            bool isSolidCube = ConfirmSolidIsFitShareFamilySymbol(cutInsStruct.OriginCutSolid);
+            bool isSolidCube = ConfirmSolidIsFitShareFamilySymbol(cutIns);
             if (!isSolidCube)
             {
-                cutInsStruct.CutFamilySymbol =
-                    Tools.CreateFamilySymbol(_activeDoc, _activeApp, cutInsStruct.OriginCutSolid);
-                return cutInsStruct;
+                cutIns.CutFamilySymbol =
+                    Tools.CreateFamilySymbol(_activeDoc, _activeApp, cutIns.OriginCutSolid);
             }
             else
             {   
@@ -149,7 +162,7 @@ namespace SolidBoolOperationTest
                     }
                 }
                 // 确定立方体三边对应长宽高后，再确定该模式下的围绕各个面垂直轴的旋转角度
-                SetCutCubicSolidSizeAndRotations(cutInsStruct);
+                //SetCutCubicSolidSizeAndRotations(cutIns);
 
                 using (Transaction tran = new Transaction(_activeDoc, "共用symbol参数化"))
                 {
@@ -157,26 +170,24 @@ namespace SolidBoolOperationTest
                     tran.Start();
                     FamilySymbol newSizeFamilySymbol =
                         shareCubeFamilySymbol.Duplicate(string.Format("HostEleID-{0}&GUID-{1}",
-                            cutInsStruct.HostElement.element.Id.IntegerValue.ToString(),
+                            cutIns.BeCutElement.element.Id.IntegerValue.ToString(),
                             Guid.NewGuid().ToString("N").Substring(0, 6))) as FamilySymbol;
                     // 设置空心族参数值
-                    newSizeFamilySymbol.LookupParameter("Length").Set(cutInsStruct.Length);
-                    newSizeFamilySymbol.LookupParameter("Width").Set(cutInsStruct.Width);
-                    newSizeFamilySymbol.LookupParameter("Height").Set(cutInsStruct.Height);
+                    newSizeFamilySymbol.LookupParameter("Length").Set(cutIns.Length / 2);
+                    newSizeFamilySymbol.LookupParameter("Width").Set(cutIns.Width / 2);
+                    newSizeFamilySymbol.LookupParameter("Height").Set(cutIns.Height / 2);
                     // ...
                     tran.Commit();
-                    
-                    cutInsStruct.CutFamilySymbol = newSizeFamilySymbol;
-                    return cutInsStruct;
+                    cutIns.CutFamilySymbol = newSizeFamilySymbol;
                 }
             }
         }
 
-        private void SetCutCubicSolidSizeAndRotations(CutInstanceStruct cutInstanceStruct)
+        private void SetCutCubicSolidSizeAndRotations(CutInstance cutIns)
         {
-            XYZ rotatedPoint = cutInstanceStruct.OriginCutSolid.ComputeCentroid();
+            XYZ rotatedPoint = cutIns.OriginCutSolid.ComputeCentroid();
             
-            List<PlanarFace[]> parallelFacesTwain = Tools.GetSolidParallelFaces(cutInstanceStruct.OriginCutSolid);
+            List<PlanarFace[]> parallelFacesTwain = Tools.GetSolidParallelFaces(cutIns.OriginCutSolid);
             
             // Solid尺寸获取
             List<Line> CrossCentroidVToFacesLines = new List<Line>();
@@ -192,28 +203,31 @@ namespace SolidBoolOperationTest
                 catch (Exception e)
                 {
                     Console.WriteLine(e);
-                    cutInstanceStruct.OriginCutSolid = null;
+                    cutIns.OriginCutSolid = null;
                     return;
                 }
                 if (LineCrossCentroid.Length < Tools.ToFeet(1))
                 {
-                    cutInstanceStruct.OriginCutSolid = null;
+                    cutIns.OriginCutSolid = null;
                     return;
                 }
                 CrossCentroidVToFacesLines.Add(LineCrossCentroid);
             }
             
             // 设置空心剪切的长宽高
-            cutInstanceStruct.Length = CrossCentroidVToFacesLines[0].Length;
-            cutInstanceStruct.Width = CrossCentroidVToFacesLines[1].Length;
-            cutInstanceStruct.Height = CrossCentroidVToFacesLines[2].Length;
+            cutIns.Length = CrossCentroidVToFacesLines[0].Length;
+            cutIns.Width = CrossCentroidVToFacesLines[1].Length;
+            cutIns.Height = CrossCentroidVToFacesLines[2].Length;
             
+            // 存在平行于XY平面则记录旋转轴和角度
+            
+            // 过滤掉不存在旋转的相交Solid
             // 构建质心重合且无偏转的Solid的两条轴心线段（朝向顶面的和朝向右面的）
-            Line xForwardLine = Line.CreateBound(rotatedPoint, rotatedPoint + new XYZ(cutInstanceStruct.Length / 2, 0, 0));
-            Line zForwardLine = Line.CreateBound(rotatedPoint, rotatedPoint + new XYZ(0, 0, cutInstanceStruct.Height / 2));
+            Line xForwardLine = Line.CreateBound(rotatedPoint, rotatedPoint + new XYZ(cutIns.Length / 2, 0, 0));
+            Line zForwardLine = Line.CreateBound(rotatedPoint, rotatedPoint + new XYZ(0, 0, cutIns.Height / 2));
 
-            double XForwardFaceArea = cutInstanceStruct.Width * cutInstanceStruct.Height;
-            double ZForwardFaceArea = cutInstanceStruct.Length * cutInstanceStruct.Width;
+            double XForwardFaceArea = cutIns.Width * cutIns.Height;
+            double ZForwardFaceArea = cutIns.Length * cutIns.Width;
             
             // 找到实际相交Solid中任意一个面积等于XForwardFaceArea和ZForwardFaceArea的面作为对应无旋转Solid右面和顶面的面
             PlanarFace originTopFace = null;
@@ -231,22 +245,51 @@ namespace SolidBoolOperationTest
                     originRightFace = planarFaces[0];
                 }
             }
+
+            bool isTopFaceDirectionOverLap = originTopFace.FaceNormal == zForwardLine.Direction ||
+                                             originTopFace.FaceNormal == -zForwardLine.Direction;
+            bool isRightFaceDirectionOverLap = originRightFace.FaceNormal == xForwardLine.Direction ||
+                                               originRightFace.FaceNormal == -xForwardLine.Direction;
+            
+            // 如果相交体和虚拟无旋转solid有两个面的方向都一致了，说明相交体本身就是没有旋转的
+            if (isTopFaceDirectionOverLap && isRightFaceDirectionOverLap)
+            {
+                return;
+            }
+            
+            // 相交体存在旋转
+            // 构造一个虚拟无旋转的Solid
+            // 底面轮廓线Curveloop
+            XYZ buttomFaceCenterPoint = rotatedPoint - new XYZ(0, 0, cutIns.Height / 2);
+            XYZ buttomLeftPoint = buttomFaceCenterPoint - new XYZ(cutIns.Length / 2, cutIns.Width / 2, 0);
+            XYZ topLeftPoint = buttomLeftPoint + new XYZ(0, cutIns.Width, 0);
+            XYZ topRightPoint = topLeftPoint + new XYZ(cutIns.Length, 0, 0);
+            XYZ buttomRightPoint = buttomLeftPoint + new XYZ(cutIns.Length, 0, 0);
+
+            IList<Curve> buttomCurves = new List<Curve>();
+            buttomCurves.Add(Line.CreateBound(buttomLeftPoint, topLeftPoint));
+            buttomCurves.Add(Line.CreateBound(topLeftPoint, topRightPoint));
+            buttomCurves.Add(Line.CreateBound(topRightPoint, buttomRightPoint));
+            buttomCurves.Add(Line.CreateBound(buttomRightPoint, buttomLeftPoint));
+
+            Solid rotationFreeSolid = GeometryCreationUtilities.CreateExtrusionGeometry(new List<CurveLoop>(){CurveLoop.Create(buttomCurves)}, new XYZ(0, 0, 1),
+                cutIns.Height);
             
             // 获取质心与质心投影到面上点的线段
             Line originXForwardLine = Line.CreateBound(rotatedPoint, rotatedPoint + originRightFace.FaceNormal) ?? throw new ArgumentNullException("Line.CreateBound(rotatedPoint, originRightFace.Project(rotatedPoint).XYZPoint)");
             Line originZForwardLine = Line.CreateBound(rotatedPoint, rotatedPoint + originTopFace.FaceNormal) ?? throw new ArgumentNullException("Line.CreateBound(rotatedPoint, originTopFace.Project(rotatedPoint).XYZPoint)");
-
+            
             if (originXForwardLine.Direction.CrossProduct(xForwardLine.Direction).IsZeroLength())
             {
-                cutInstanceStruct.Rotations.Add(null, 0);
+                cutIns.Rotations.Add(null, 0);
             }
             else
             {
-                cutInstanceStruct.Rotations.Add(Line.CreateBound(rotatedPoint, rotatedPoint + originXForwardLine.Direction.CrossProduct(xForwardLine.Direction)), originXForwardLine.Direction.AngleTo(xForwardLine.Direction));
+                cutIns.Rotations.Add(Line.CreateBound(rotatedPoint, rotatedPoint + xForwardLine.Direction.CrossProduct(originXForwardLine.Direction)), xForwardLine.Direction.AngleTo(originXForwardLine.Direction));
             }
-            Transform firstTransform = Transform.CreateRotation(originXForwardLine.Direction.CrossProduct(xForwardLine.Direction),
-                originXForwardLine.Direction.AngleTo(xForwardLine.Direction));
-            Solid tempSolid = SolidUtils.CreateTransformed(cutInstanceStruct.OriginCutSolid, firstTransform);
+            Transform firstTransform = Transform.CreateRotationAtPoint(xForwardLine.Direction.CrossProduct(originXForwardLine.Direction),
+                xForwardLine.Direction.AngleTo(originXForwardLine.Direction), rotatedPoint);
+            Solid tempSolid = SolidUtils.CreateTransformed(rotationFreeSolid, firstTransform);
             List<PlanarFace[]> tempParallelFacesTwain = Tools.GetSolidParallelFaces(tempSolid);
             PlanarFace tempOriginTopFace = null;
             foreach (var planarFaces in tempParallelFacesTwain)
@@ -257,13 +300,21 @@ namespace SolidBoolOperationTest
                     break;
                 }
             }
-            cutInstanceStruct.Rotations.Add(originXForwardLine, tempOriginTopFace.FaceNormal.AngleTo(originZForwardLine.Direction));
+
+            if (originZForwardLine.Direction.CrossProduct(tempOriginTopFace.FaceNormal).IsZeroLength())
+            {
+                cutIns.Rotations.Add(null, 0);
+            }
+            else
+            {
+                cutIns.Rotations.Add(originXForwardLine, tempOriginTopFace.FaceNormal.AngleTo(originZForwardLine.Direction));
+            }
         }
 
-        private bool ConfirmSolidIsFitShareFamilySymbol(Solid solid)
+        private bool ConfirmSolidIsFitShareFamilySymbol(CutInstance cutIns)
         {
             // 判定每一个面是否为长方形
-            IEnumerator facesEnumerator = solid.Faces.GetEnumerator();
+            IEnumerator facesEnumerator = cutIns.OriginCutSolid.Faces.GetEnumerator();
             while (facesEnumerator.MoveNext())
             {
                 PlanarFace face = facesEnumerator.Current as PlanarFace;
@@ -272,18 +323,102 @@ namespace SolidBoolOperationTest
                     return false;
                 }
             }
-            List<PlanarFace[]> parallelFacesTwain = Tools.GetSolidParallelFaces(solid);
+            List<PlanarFace[]> parallelFacesTwain = Tools.GetSolidParallelFaces(cutIns.OriginCutSolid);
             
             if (parallelFacesTwain.Count != 3)
                 return false;
+
+            XYZ rotatedPoint = cutIns.OriginCutSolid.ComputeCentroid();
+            
+            // Solid尺寸获取
+            List<Line> CrossCentroidVToFacesLines = new List<Line>();
+            PlanarFace[] topAndButtomFaces = null;
+            int topAndButtomFacesIndex = 0;
+            foreach (var planarFaces in parallelFacesTwain)
+            {   
+                XYZ projectPointOne = planarFaces[0].Project(rotatedPoint).XYZPoint;
+                XYZ projectPointTwo = planarFaces[1].Project(rotatedPoint).XYZPoint;
+                Line LineCrossCentroid;
+                try
+                {
+                    LineCrossCentroid = Line.CreateBound(projectPointOne, projectPointTwo);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine(e);
+                    cutIns.OriginCutSolid = null;
+                    return false;
+                }
+                if (LineCrossCentroid.Length < Tools.ToFeet(1))
+                {
+                    cutIns.OriginCutSolid = null;
+                    return false;
+                }
+                if (LineCrossCentroid.Direction.IsAlmostEqualTo(new XYZ(0, 0, 1)) || LineCrossCentroid.Direction.IsAlmostEqualTo(new XYZ(0, 0, -1)))
+                {
+                    topAndButtomFaces = planarFaces;
+                    topAndButtomFacesIndex = parallelFacesTwain.IndexOf(planarFaces);
+                }
+                CrossCentroidVToFacesLines.Add(LineCrossCentroid);
+                
+            }
+
+            if (topAndButtomFaces == null)
+            {
+                return false;
+            }
+            // 设置空心剪切的长宽高
+            
+            cutIns.Height = CrossCentroidVToFacesLines[topAndButtomFacesIndex].Length;
+            if (topAndButtomFacesIndex == 0)
+            {
+                cutIns.Length = CrossCentroidVToFacesLines[1].Length;
+                cutIns.Width = CrossCentroidVToFacesLines[2].Length;
+            }else if (topAndButtomFacesIndex == 1)
+            {
+                cutIns.Length = CrossCentroidVToFacesLines[0].Length;
+                cutIns.Width = CrossCentroidVToFacesLines[2].Length;
+            }
+            else
+            {
+                cutIns.Length = CrossCentroidVToFacesLines[0].Length;
+                cutIns.Width = CrossCentroidVToFacesLines[1].Length;
+            }
+            
+            // 过滤掉不存在旋转的相交Solid
+            // 构建质心重合且无偏转的Solid的两条轴心线段（朝向顶面的和朝向右面的）
+            Line xForwardLine = Line.CreateBound(rotatedPoint, rotatedPoint + new XYZ(cutIns.Length / 2, 0, 0));
+            Line zForwardLine = Line.CreateBound(rotatedPoint, rotatedPoint + new XYZ(0, 0, cutIns.Height / 2));
+
+            double XForwardFaceArea = cutIns.Width * cutIns.Height;
+
+            // 找到实际相交Solid中任意一个面积等于XForwardFaceArea和ZForwardFaceArea的面作为对应无旋转Solid右面和顶面的面
+            PlanarFace originRightFace = null;
             foreach (var planarFaces in parallelFacesTwain)
             {
-                if (planarFaces[1].FaceNormal.IsAlmostEqualTo(new XYZ(0, 0, 1)) || planarFaces[1].FaceNormal.IsAlmostEqualTo(new XYZ(0, 0, -1)))
+                if (Math.Abs(planarFaces[0].Area - XForwardFaceArea) < 0.000001)
                 {
-                    return true;
+                    originRightFace = planarFaces[0];
+                    break;
                 }
             }
-            // 对面平行情况判断
+            
+            bool isRightFaceDirectionOverLap = originRightFace.FaceNormal.IsAlmostEqualTo(xForwardLine.Direction) ||
+                                               originRightFace.FaceNormal.IsAlmostEqualTo(-xForwardLine.Direction);
+            
+            // 如果相交体和虚拟无旋转solid有两个面的方向都一致了，说明相交体本身就是围绕Z轴没有旋转的
+            if (isRightFaceDirectionOverLap)
+            {
+                return true;
+            }
+            
+            Line originXForwardLine = Line.CreateBound(rotatedPoint, rotatedPoint + originRightFace.FaceNormal) ?? throw new ArgumentNullException("Line.CreateBound(rotatedPoint, originRightFace.Project(rotatedPoint).XYZPoint)");
+            
+            if (!originXForwardLine.Direction.CrossProduct(xForwardLine.Direction).IsZeroLength())
+            {
+                cutIns.Rotations.Add(Line.CreateBound(rotatedPoint, rotatedPoint + xForwardLine.Direction.CrossProduct(originXForwardLine.Direction)), xForwardLine.Direction.AngleTo(originXForwardLine.Direction));
+            }
+            
             return true;
         }
         
@@ -332,16 +467,12 @@ namespace SolidBoolOperationTest
                         var interPendingEleHostDocCutLevelNum = (int) intersectPendingElement.DocPriority;
                         if (pendingEleHostDocCutLevelNum == interPendingEleHostDocCutLevelNum)
                             ClassifyReadyToCreateSolid(pendingElement, intersectPendingElement, AssociationTypes.Collide);
-                        else
-                        {
-                            if (pendingEleHostDocCutLevelNum > interPendingEleHostDocCutLevelNum) ClassifyReadyToCreateSolid(intersectPendingElement, pendingElement, AssociationTypes.Cut);
-                            else ClassifyReadyToCreateSolid(pendingElement, intersectPendingElement, AssociationTypes.Cut);
-                        }
+                        else if (pendingEleHostDocCutLevelNum > interPendingEleHostDocCutLevelNum)
+                            ClassifyReadyToCreateSolid(intersectPendingElement, pendingElement, AssociationTypes.Cut);
                     }
                     else
                     {
                         if (pendingEleCutLevelNum > interPendingEleCutLevelNum) ClassifyReadyToCreateSolid(intersectPendingElement, pendingElement, AssociationTypes.Cut);
-                        else ClassifyReadyToCreateSolid(pendingElement, intersectPendingElement, AssociationTypes.Cut);
                     }
                 }
             }
@@ -370,12 +501,12 @@ namespace SolidBoolOperationTest
             var intersectSolid = GetIntersectSolid(cuttingPendingElement, cuttedPendingElement);
             if (intersectSolid != null)
             {
-                CutInstanceStruct cutInstanceStruct = new CutInstanceStruct();
-                cutInstanceStruct.Relation = intersectSolid.Volume != 0 ? specifiedRelation != AssociationTypes.Collide ? specifiedRelation : AssociationTypes.Collide : AssociationTypes.Join;
-                cutInstanceStruct.CuttingElement = cuttingPendingElement;
-                cutInstanceStruct.HostElement = cuttedPendingElement;
-                cutInstanceStruct.OriginCutSolid = intersectSolid;
-                cutInstanceStructs.Add(cutInstanceStruct);
+                CutInstance cutIns = new CutInstance(intersectSolid);
+                cutIns.Relation = intersectSolid.Volume != 0 ? specifiedRelation != AssociationTypes.Collide ? specifiedRelation : AssociationTypes.Collide : AssociationTypes.Join;
+                cutIns.IntactElement = cuttingPendingElement;
+                cutIns.BeCutElement = cuttedPendingElement;
+                cutIns.OriginCutSolid = intersectSolid;
+                cutInstances.Add(cutIns);
             }
         }
         
@@ -406,6 +537,10 @@ namespace SolidBoolOperationTest
 
             var cuttingSolid = Tools.GetArchMainSolid(cuttingPendingElement.element, cuttingSolidTransform);
             var cuttedSolid = Tools.GetArchMainSolid(cuttedPendingElement.element, null);
+            if (cuttingSolid == null || cuttingSolid.Volume == 0 || cuttedSolid == null || cuttedSolid.Volume == 0)
+            {
+                return null;
+            }
             try
             {
                 intersectSolid =

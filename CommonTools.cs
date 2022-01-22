@@ -527,6 +527,10 @@ namespace CommonTools
 
         public static FamilySymbol CreateFamilySymbol(Document doc, Application app, Solid cutSolid)
         {
+            if (cutSolid == null || cutSolid.Volume == 0)
+            {
+                return null;
+            }
             var hollowStretch = CreateFreeFormElementFamily(doc, app, cutSolid, false);
 
             var ids = hollowStretch.GetFamilySymbolIds();
