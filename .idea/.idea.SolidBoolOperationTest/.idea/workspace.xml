@@ -30,12 +30,6 @@
     <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
     <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
     <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/4c14456319154999b7e3b4c105f953a419f8ad0/57/8a27da78/BuiltInCategory.cs" root0="SKIP_HIGHLIGHTING" />
   </component>
   <component name="MarkdownSettingsMigration">
@@ -62,42 +56,29 @@
       <breakpoints>
         <line-breakpoint enabled="true" type="DotNet Breakpoints">
           <url>file://$PROJECT_DIR$/CutProcess.cs</url>
-          <line>83</line>
-          <properties documentPath="E:\Revit2019DevProjs\SolidBoolOperationTest\CutProcess.cs" initialLine="83" containingFunctionPresentation="method 'CreateCutInstancesInActiveDoc'">
+          <line>455</line>
+          <properties documentPath="E:\Revit2019DevProjs\SolidBoolOperationTest\CutProcess.cs" initialLine="455" containingFunctionPresentation="method 'ImplementIntersectElementsCutPolicy'">
             <startOffsets>
-              <option value="2627" />
+              <option value="18905" />
             </startOffsets>
             <endOffsets>
-              <option value="2799" />
+              <option value="18952" />
             </endOffsets>
           </properties>
-          <option name="timeStamp" value="12" />
+          <option name="timeStamp" value="19" />
         </line-breakpoint>
         <line-breakpoint enabled="true" type="DotNet Breakpoints">
           <url>file://$PROJECT_DIR$/CutProcess.cs</url>
-          <line>187</line>
-          <properties documentPath="E:\Revit2019DevProjs\SolidBoolOperationTest\CutProcess.cs" initialLine="180" containingFunctionPresentation="method 'SetCutCubicSolidSizeAndRotations'">
+          <line>480</line>
+          <properties documentPath="E:\Revit2019DevProjs\SolidBoolOperationTest\CutProcess.cs" initialLine="480" containingFunctionPresentation="method 'ImplementIntersectElementsCutPolicy'">
             <startOffsets>
-              <option value="6802" />
+              <option value="20444" />
             </startOffsets>
             <endOffsets>
-              <option value="6861" />
+              <option value="20456" />
             </endOffsets>
           </properties>
-          <option name="timeStamp" value="13" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DotNet Breakpoints">
-          <url>file://$PROJECT_DIR$/CutProcess.cs</url>
-          <line>146</line>
-          <properties documentPath="E:\Revit2019DevProjs\SolidBoolOperationTest\CutProcess.cs" initialLine="146" containingFunctionPresentation="method 'GetCutNewInstanceKeyInfo'">
-            <startOffsets>
-              <option value="4874" />
-            </startOffsets>
-            <endOffsets>
-              <option value="4936" />
-            </endOffsets>
-          </properties>
-          <option name="timeStamp" value="14" />
+          <option name="timeStamp" value="21" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>

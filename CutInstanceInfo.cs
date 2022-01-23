@@ -17,6 +17,9 @@ namespace SolidBoolOperationTest
 
         public CutInstance(Solid solid)
         {
+            Length = 0d;
+            Width = 0d;
+            Height = 0d;
             OriginCutSolid = solid;
             Rotations = new Dictionary<Line, double>();
         }
