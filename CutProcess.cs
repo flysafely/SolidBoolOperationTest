@@ -532,60 +532,58 @@ namespace SolidBoolOperationTest
                     cutIns.IntactElement = cuttingPendingElement;
                     cutIns.BeCutElement = cuttedPendingElement;
                     cutInstances.Add(cutIns);
-
-                    if (cuttedPendingElement.element.Document.Equals(cuttingPendingElement.element.Document) &&
-                        JoinGeometryUtils.AreElementsJoined(cuttedPendingElement.element.Document,
-                            cuttedPendingElement.element, cuttingPendingElement.element) && 
-                        JoinGeometryUtils.IsCuttingElementInJoin(cuttedPendingElement.element.Document,
-                            cuttedPendingElement.element, cuttingPendingElement.element))
-                    {
+                    
                         // 处理join状态下的其他相交pendingElements与当前相交pendingElement的扣减部分
-                        foreach (var intersectEle in cuttedPendingElement.IntersectEles)
+                    foreach (var intersectEle in cuttedPendingElement.IntersectEles)
+                    {
+                        if (cuttedPendingElement.element.Document.Equals(intersectEle.element.Document) &&
+                            JoinGeometryUtils.AreElementsJoined(cuttedPendingElement.element.Document,
+                                cuttedPendingElement.element, intersectEle.element) &&
+                            JoinGeometryUtils.IsCuttingElementInJoin(cuttedPendingElement.element.Document,
+                                cuttedPendingElement.element, intersectEle.element) && 
+                            intersectEle.element.Id != cuttingPendingElement.element.Id)
                         {
-                            if (intersectEle.element.Id != cuttingPendingElement.element.Id)
+                            if (Tools.GetArchMainSolid(cuttingPendingElement.element,
+                                    cuttingPendingElement.TransformInWCS) == null ||
+                                Tools.GetArchMainSolid(intersectEle.element, intersectEle.TransformInWCS) == null)
                             {
-                                if (Tools.GetArchMainSolid(cuttingPendingElement.element,
-                                        cuttingPendingElement.TransformInWCS) == null ||
-                                    Tools.GetArchMainSolid(intersectEle.element, intersectEle.TransformInWCS) == null)
-                                {
-                                    continue;
-                                }
+                                continue;
+                            }
 
-                                Solid joinedElementsIntersectSolid = null;
-                                if (!cuttedPendingElement.element.Document.Equals(_activeDoc))
-                                {
-                                    continue;
-                                }
+                            Solid joinedElementsIntersectSolid;
+                            if (!cuttedPendingElement.element.Document.Equals(_activeDoc))
+                            {
+                                continue;
+                            }
 
-                                using (Transaction tran = new Transaction(_activeDoc,
-                                           "CreateCutInstanceInActiveDoc"))
-                                {
-                                    tran.Start();
-                                    // 解除join状态，获得实际相交部分solid
-                                    JoinGeometryUtils.UnjoinGeometry(cuttedPendingElement.element.Document,
-                                        cuttedPendingElement.element, cuttingPendingElement.element);
-                                    _activeDoc.Regenerate();
+                            using (Transaction tran = new Transaction(_activeDoc,
+                                       "CreateCutInstanceInActiveDoc"))
+                            {
+                                tran.Start();
+                                // 解除join状态，获得实际相交部分solid
+                                JoinGeometryUtils.UnjoinGeometry(cuttedPendingElement.element.Document,
+                                    cuttedPendingElement.element, intersectEle.element);
+                                _activeDoc.Regenerate();
 
-                                    joinedElementsIntersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(
-                                        Tools.GetArchMainSolid(cuttingPendingElement.element,
-                                            cuttingPendingElement.TransformInWCS),
-                                        Tools.GetArchMainSolid(intersectEle.element, intersectEle.TransformInWCS),
-                                        BooleanOperationsType.Intersect);
+                                joinedElementsIntersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(
+                                    Tools.GetArchMainSolid(cuttingPendingElement.element,
+                                        cuttingPendingElement.TransformInWCS),
+                                    Tools.GetArchMainSolid(intersectEle.element, intersectEle.TransformInWCS),
+                                    BooleanOperationsType.Intersect);
 
-                                    JoinGeometryUtils.JoinGeometry(cuttedPendingElement.element.Document,
-                                        cuttedPendingElement.element, cuttingPendingElement.element);
-                                    _activeDoc.Regenerate();
-                                    tran.Commit();
-                                }
+                                JoinGeometryUtils.JoinGeometry(cuttedPendingElement.element.Document,
+                                    cuttedPendingElement.element, intersectEle.element);
+                                _activeDoc.Regenerate();
+                                tran.Commit();
+                            }
 
-                                if (joinedElementsIntersectSolid != null && joinedElementsIntersectSolid.Volume != 0)
-                                {
-                                    CutInstance cutjoinIns = new CutInstance(joinedElementsIntersectSolid);
-                                    cutjoinIns.Relation = AssociationTypes.Join;
-                                    cutjoinIns.IntactElement = null;
-                                    cutjoinIns.BeCutElement = intersectEle;
-                                    cutInstances.Add(cutjoinIns);
-                                }
+                            if (joinedElementsIntersectSolid != null && joinedElementsIntersectSolid.Volume != 0)
+                            {
+                                CutInstance cutjoinIns = new CutInstance(joinedElementsIntersectSolid);
+                                cutjoinIns.Relation = AssociationTypes.Join;
+                                cutjoinIns.IntactElement = null;
+                                cutjoinIns.BeCutElement = intersectEle;
+                                cutInstances.Add(cutjoinIns);
                             }
                         }
                     }

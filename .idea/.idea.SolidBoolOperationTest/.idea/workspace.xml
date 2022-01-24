@@ -42,21 +42,15 @@
         <line-breakpoint enabled="true" type="DotNet Breakpoints">
           <url>file://$PROJECT_DIR$/CutProcess.cs</url>
           <line>476</line>
-          <properties documentPath="E:\Revit2019DevProjs\SolidBoolOperationTest\CutProcess.cs" initialLine="455" containingFunctionPresentation="method 'ImplementIntersectElementsCutPolicy'" />
-          <option name="timeStamp" value="19" />
-        </line-breakpoint>
-        <line-breakpoint enabled="true" type="DotNet Breakpoints">
-          <url>file://$PROJECT_DIR$/CutProcess.cs</url>
-          <line>478</line>
-          <properties documentPath="F:\RevitProjects\SolidBoolOperationTest\CutProcess.cs" initialLine="478" containingFunctionPresentation="method 'ImplementIntersectElementsCutPolicy'">
+          <properties documentPath="E:\Revit2019DevProjs\SolidBoolOperationTest\CutProcess.cs" initialLine="476" containingFunctionPresentation="method 'ImplementIntersectElementsCutPolicy'">
             <startOffsets>
-              <option value="18955" />
+              <option value="18877" />
             </startOffsets>
             <endOffsets>
-              <option value="19024" />
+              <option value="18924" />
             </endOffsets>
           </properties>
-          <option name="timeStamp" value="23" />
+          <option name="timeStamp" value="24" />
         </line-breakpoint>
       </breakpoints>
     </breakpoint-manager>
