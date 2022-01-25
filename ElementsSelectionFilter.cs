@@ -8,7 +8,7 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.UI.Selection;
 
-namespace SolidBoolOperationTest
+namespace SmartComponentDeduction
 {
     public class ElementsSelectionFilter : ISelectionFilter
     {

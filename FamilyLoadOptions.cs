@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace SolidBoolOperationTest
+namespace SmartComponentDeduction
 {
     internal class FamilyLoadOptions : IFamilyLoadOptions
     {

@@ -8,7 +8,7 @@ using System.Collections.Generic;
 using Autodesk.Revit.DB;
 using CommonTools;
 
-namespace SolidBoolOperationTest
+namespace SmartComponentDeduction
 {
     public class PendingElement
     {

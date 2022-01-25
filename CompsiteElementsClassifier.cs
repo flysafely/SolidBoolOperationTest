@@ -11,7 +11,7 @@ using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.DB;
 using CommonTools;
 
-namespace SolidBoolOperationTest
+namespace SmartComponentDeduction
 {
     public class CompositeElementsClassifier
     {

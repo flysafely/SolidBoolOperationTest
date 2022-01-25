@@ -1,4 +1,4 @@
-﻿namespace SolidBoolOperationTest
+﻿namespace SmartComponentDeduction
 {
     public enum ElementAndDocRelations
     {

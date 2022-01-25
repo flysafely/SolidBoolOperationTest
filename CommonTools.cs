@@ -5,7 +5,7 @@ using System.IO;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using SolidBoolOperationTest;
+using SmartComponentDeduction;
 
 namespace CommonTools
 {
@@ -214,6 +214,7 @@ namespace CommonTools
                         familyDoc.OwnerFamily.get_Parameter(BuiltInParameter.FAMILY_ALLOW_CUT_WITH_VOIDS)?.Set(1);
                         freeForm.get_Parameter(BuiltInParameter.ELEMENT_IS_CUTTING)?.Set(1);
                     }
+
                     tran.Commit();
                 }
 
@@ -254,17 +255,17 @@ namespace CommonTools
         }
 
         public static Family LoadFamilyByFamilyName(Application app, Document loadingDoc, string familyName)
-        {   
+        {
             // 获取rfa文件名称
             string familyFilePath = Path.Combine(app.FamilyTemplatePath, string.Format("{0}.rfa", familyName));
             // 判断当前文档中是否已经加载过该族
             var family = new FilteredElementCollector(loadingDoc).OfClass(typeof(Family)).Select(p => p as Family)
                 .FirstOrDefault(p => p.Name == familyName);
             if (family == null)
-            {   
+            {
                 bool loadResult = false;
                 using (Transaction tran = new Transaction(loadingDoc, "空心族创建"))
-                {   
+                {
                     tran.Start();
                     loadResult = loadingDoc.LoadFamily(familyFilePath, new FamilyLoadOptions(), out family);
                     tran.Commit();
@@ -280,8 +281,10 @@ namespace CommonTools
                 //     fs.Activate();
                 // }
             }
+
             return family;
         }
+
         /// <summary>
         /// 创建自定义预制厚度(全厚度)叠合板
         /// </summary>
@@ -531,6 +534,7 @@ namespace CommonTools
             {
                 return null;
             }
+
             var hollowStretch = CreateFreeFormElementFamily(doc, app, cutSolid, false);
 
             var ids = hollowStretch.GetFamilySymbolIds();
@@ -602,10 +606,12 @@ namespace CommonTools
                         {
                             familySymbol.Activate();
                         }
+
                         tran.Commit();
                     }
                 }
             }
+
             return familySymbol;
         }
 
@@ -614,23 +620,27 @@ namespace CommonTools
             List<PlanarFace[]> parallelFacesTwain = new List<PlanarFace[]>();
             List<int> usedIndexs = new List<int>();
             for (int i = 0; i < solid.Faces.Size; i++)
-            {   
+            {
                 if (usedIndexs.Contains(i))
                     continue;
                 for (int j = i + 1; j < solid.Faces.Size; j++)
                 {
                     if (usedIndexs.Contains(j))
                         continue;
-                    if ((solid.Faces.get_Item(i) as PlanarFace).FaceNormal.IsAlmostEqualTo(-(solid.Faces.get_Item(j) as PlanarFace).FaceNormal))
+                    if ((solid.Faces.get_Item(i) as PlanarFace).FaceNormal.IsAlmostEqualTo(
+                            -(solid.Faces.get_Item(j) as PlanarFace).FaceNormal))
                     {
                         usedIndexs.Add(i);
                         usedIndexs.Add(j);
-                        parallelFacesTwain.Add(new []{solid.Faces.get_Item(i) as PlanarFace, solid.Faces.get_Item(j) as PlanarFace});
+                        parallelFacesTwain.Add(new[]
+                            {solid.Faces.get_Item(i) as PlanarFace, solid.Faces.get_Item(j) as PlanarFace});
                     }
                 }
             }
+
             return parallelFacesTwain;
         }
+
         public static XYZ GetProjectPoint(Plane plane, XYZ xyz)
         {
             Transform tf = Transform.Identity;
@@ -641,6 +651,45 @@ namespace CommonTools
             XYZ p = tf.Inverse.OfPoint(xyz);
             p = new XYZ(p.X, p.Y, 0);
             return tf.OfPoint(p);
+        }
+
+        public static Solid ScaleSolid(Solid originSolid, double scale)
+        {
+            Solid tempSolid;
+            try
+            {
+                XYZ originSolidCentroid = originSolid.ComputeCentroid();
+                Transform ScaledIdentityMatrix = Transform.Identity.ScaleBasis(scale);
+                tempSolid = SolidUtils.CreateTransformed(originSolid, ScaledIdentityMatrix);
+                XYZ tempSolidCentroid = tempSolid.ComputeCentroid();
+                return SolidUtils.CreateTransformed(tempSolid, Transform.CreateTranslation(originSolidCentroid - tempSolidCentroid));
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.ToString());
+                return originSolid;
+            }
+        }
+
+        public static Solid IntersectRecursive(Solid solid1, Solid solid2, double increase)
+        {
+            try
+            {
+                return BooleanOperationsUtils.ExecuteBooleanOperation(solid1, solid2,
+                        BooleanOperationsType.Intersect);
+            }
+            catch
+            {
+                var scaledCuttingSolid = ScaleSolid(solid1, 1.000d + increase);
+                if (1.000d + increase < 1.01)
+                {
+                    return IntersectRecursive(scaledCuttingSolid, solid2, increase);
+                }
+                else
+                {
+                    return null;
+                }
+            }
         }
     }
 }

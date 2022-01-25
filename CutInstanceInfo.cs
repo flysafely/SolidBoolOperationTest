@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using Autodesk.Revit.DB;
-namespace SolidBoolOperationTest
+namespace SmartComponentDeduction
 {
     public class CutInstance
     {
