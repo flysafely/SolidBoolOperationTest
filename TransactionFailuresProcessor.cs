@@ -5,28 +5,43 @@ namespace SmartComponentDeduction
 {
     public class TransactionFailuresProcessor : IFailuresPreprocessor
     {
+        private string _failureMessage;
+        private bool _hasError;
+
+        public string FailureMessage
+        {
+            get { return _failureMessage; }
+            set { _failureMessage = value; }
+        }
+
+        public bool HasError
+        {
+            get { return _hasError; }
+            set { _hasError = value; }
+        }
+
         public FailureProcessingResult PreprocessFailures(FailuresAccessor failuresAccessor)
         {
-            // 获取所有的失败信息
-            IList<FailureMessageAccessor> failureMessageAccessors = failuresAccessor.GetFailureMessages();
-            if (failureMessageAccessors.Count == 0)
+            var failures = failuresAccessor.GetFailureMessages();
+            if (failures.Count == 0)
                 return FailureProcessingResult.Continue;
-            foreach (FailureMessageAccessor failureMessAcce in failureMessageAccessors)
+
+            foreach (var failure in failures)
             {
-                // 如果是错误，则尝试解决
-                if (failureMessAcce.GetSeverity() == FailureSeverity.Error)
+                if (failure.GetSeverity() == FailureSeverity.Error)
                 {
-                    // 模拟手动单击"删除连接"按钮
-                    if (failureMessAcce.HasResolutions())
-                        failuresAccessor.ResolveFailure(failureMessAcce);
+                    _failureMessage = failure.GetDescriptionText();
+                    _hasError = true;
+                    return FailureProcessingResult.ProceedWithRollBack;
                 }
-                // 如果是警告，则禁止弹框
-                if (failureMessAcce.GetSeverity() == FailureSeverity.Warning)
+
+                if (failure.GetSeverity() == FailureSeverity.Warning)
                 {
-                    failuresAccessor.DeleteWarning(failureMessAcce);
+                    failuresAccessor.DeleteWarning(failure);
                 }
             }
-            return FailureProcessingResult.ProceedWithCommit;
+
+            return FailureProcessingResult.Continue;
         }
     }
 }

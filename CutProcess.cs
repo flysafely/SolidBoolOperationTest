@@ -67,9 +67,22 @@ namespace SmartComponentDeduction
                     GetCutNewInstanceKeyInfo(cutIns);
                     using (Transaction tran = new Transaction(_activeDoc, "CreateCutInstanceInActiveDoc"))
                     {
-                        tran.Start();
-                        CutHostElementWithTransformedCutFamilyInstance(cutIns);
-                        tran.Commit();
+                        try
+                        {
+                            tran.Start();
+                            FailureHandlingOptions options = tran.GetFailureHandlingOptions();
+                            TransactionFailuresProcessor failureProcessor = new TransactionFailuresProcessor();
+                            options.SetFailuresPreprocessor(failureProcessor);
+                            tran.SetFailureHandlingOptions(options);
+                            CutHostElementWithTransformedCutFamilyInstance(cutIns);
+                            tran.Commit();
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine(e.ToString());
+                            if (tran.GetStatus() == TransactionStatus.Started)
+                                tran.RollBack();
+                        }
                     }
                 }
             }
