@@ -21,9 +21,9 @@ namespace SmartComponentDeduction
 
         private readonly string _cutRfaFileName;
 
-        private readonly BlockingCollection<PendingElement[]> omissiveKeyPendingElements = new BlockingCollection<PendingElement[]>();
+        private readonly List<PendingElement[]> omissiveKeyPendingElements = new List<PendingElement[]>();
 
-        private readonly BlockingCollection<CutInstance> _cutInstances = new BlockingCollection<CutInstance>();
+        private readonly List<CutInstance> _cutInstances = new List<CutInstance>();
 
 
         // 默认空心剪切族类familysymbol
@@ -65,7 +65,7 @@ namespace SmartComponentDeduction
         private void CreateCutInstancesInActiveDoc()
         {
             // 找出真实需要剪切的相交Solid
-            foreach (var cutIns in _cutInstances.GetConsumingEnumerable().
+            foreach (var cutIns in _cutInstances.
                          Where(e => e.BeCutElement.element.Document.Equals(_activeDoc) && 
                                     e.Relation != AssociationTypes.Collide).
                          ToList().
@@ -495,41 +495,6 @@ namespace SmartComponentDeduction
             {
                 return false;
             }
-            // // 从这里开始使用多线程
-            // DateTime dt = DateTime.Now;
-            // List<List<PendingElement>> elementGroups = new List<List<PendingElement>>();
-            // int threadCount = 10;
-            // int groupCount = pendingElements.Count / threadCount;
-            // int lastGroupCount = pendingElements.Count % threadCount;
-            // if (groupCount != 0)
-            // {
-            //     for (int i = 0; i < threadCount; i++)
-            //     {
-            //         var elements = pendingElements.ToList().GetRange(groupCount * i, groupCount);
-            //         elementGroups.Add(elements);
-            //     }
-            // }
-            // if (lastGroupCount > 0)
-            // {
-            //     elementGroups.Add(pendingElements.ToList().GetRange(pendingElements.Count - lastGroupCount, lastGroupCount));
-            // }
-            //
-            // List<Task> tasks = new List<Task>();
-            // foreach (var elementGroup in elementGroups)
-            // {
-            //     tasks.Add(new Task(() =>
-            //     {
-            //         foreach (var pendingElement in elementGroup)
-            //         {
-            //             ClassifyIntersect(pendingElement);
-            //         }
-            //     }));
-            // }
-            // foreach (var task in tasks)
-            // {
-            //     task.Start();
-            // }
-            
             foreach (var pendingElement in pendingElements)
             {
                 foreach (var intersectPendingElement in pendingElement.IntersectEles)
@@ -605,7 +570,7 @@ namespace SmartComponentDeduction
                             continue;
                         }
                         
-                        if (IsCutOperationAffectOtherJoinedElement(cuttedPendingElement, intersectEle))
+                        if (IsCutOperationAffectOtherJoinedElement(cuttedPendingElement, cuttingPendingElement, intersectEle))
                         {
                             // 发现存在额外相交体的情况时，只记录，先不进入事务处理
                             omissiveKeyPendingElements.Add(new [] {cuttedPendingElement, cuttingPendingElement, intersectEle});
@@ -624,16 +589,15 @@ namespace SmartComponentDeduction
                     cutIns.BeCutElement = cuttedPendingElement;
                     _cutInstances.Add(cutIns);
                 }
-                    
             }
         }
 
-        private bool IsCutOperationAffectOtherJoinedElement(PendingElement hostElement, PendingElement joinedElement)
+        private bool IsCutOperationAffectOtherJoinedElement(PendingElement hostElement, PendingElement cuttingPendingElement, PendingElement joinedElement)
         {
             return hostElement.element.Document.Equals(joinedElement.element.Document) &&
                    JoinGeometryUtils.AreElementsJoined(hostElement.element.Document, hostElement.element, joinedElement.element) && 
                    JoinGeometryUtils.IsCuttingElementInJoin(hostElement.element.Document, hostElement.element, joinedElement.element) &&
-                   joinedElement.element.Id != hostElement.element.Id;
+                   cuttingPendingElement.element.Id != hostElement.element.Id;
         }
         
         private Solid GetJoinedElementsActualIntersectSolid(PendingElement cuttedPendingElement, PendingElement cuttingPendingElement, PendingElement cuttedIntersectPendingElement)
@@ -654,9 +618,9 @@ namespace SmartComponentDeduction
                         cuttedPendingElement.element, cuttedIntersectPendingElement.element);
                     _activeDoc.Regenerate();
 
-                    Solid joinedElementsIntersectSolid = Tools.IntersectRecursive(Tools.GetArchMainSolid(cuttingPendingElement.element,
-                            cuttingPendingElement.TransformInWCS),
-                        Tools.GetArchMainSolid(cuttedIntersectPendingElement.element, cuttedPendingElement.TransformInWCS),
+                    Solid joinedElementsIntersectSolid = Tools.IntersectRecursive(Tools.GetArchMainSolid(cuttedPendingElement.element,
+                            cuttedPendingElement.TransformInWCS),
+                        Tools.GetArchMainSolid(cuttedIntersectPendingElement.element, cuttedIntersectPendingElement.TransformInWCS),
                         0.001);
                     
                     if (joinedElementsIntersectSolid == null || joinedElementsIntersectSolid.Volume == 0)

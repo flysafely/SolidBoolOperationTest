@@ -11,7 +11,10 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="HighlightingSettingsPerFile">
+    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
+    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/4c14456319154999b7e3b4c105f953a419f8ad0/0a/a94dd074/SolidUtils.cs" root0="SKIP_HIGHLIGHTING" />
+    <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/f2625fd844aa4dd5b6a3882f24f14d7952e178/e4/6d6e225e/InvalidOperationException.cs" root0="SKIP_HIGHLIGHTING" />
   </component>
   <component name="MarkdownSettingsMigration">
     <option name="stateVersion" value="1" />
@@ -29,5 +32,63 @@
   <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
   <component name="VcsManagerConfiguration">
     <option name="CLEAR_INITIAL_COMMIT_MESSAGE" value="true" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/CutProcess.cs</url>
+          <line>497</line>
+          <properties documentPath="E:\Revit2019DevProjs\SolidBoolOperationTest\CutProcess.cs" initialLine="497" containingFunctionPresentation="method 'GetCutInstancesByCutPolicy'">
+            <startOffsets>
+              <option value="20955" />
+            </startOffsets>
+            <endOffsets>
+              <option value="21002" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="1" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/CommonTools.cs</url>
+          <line>682</line>
+          <properties documentPath="E:\Revit2019DevProjs\SolidBoolOperationTest\CommonTools.cs" initialLine="682" containingFunctionPresentation="method 'IntersectRecursive'">
+            <startOffsets>
+              <option value="26730" />
+            </startOffsets>
+            <endOffsets>
+              <option value="26794" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/CutProcess.cs</url>
+          <line>575</line>
+          <properties documentPath="E:\Revit2019DevProjs\SolidBoolOperationTest\CutProcess.cs" initialLine="575" containingFunctionPresentation="method 'ClassifyReadyToCreateSolid'">
+            <startOffsets>
+              <option value="24938" />
+            </startOffsets>
+            <endOffsets>
+              <option value="25037" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="4" />
+        </line-breakpoint>
+        <line-breakpoint enabled="true" type="DotNet Breakpoints">
+          <url>file://$PROJECT_DIR$/CutProcess.cs</url>
+          <line>604</line>
+          <properties documentPath="E:\Revit2019DevProjs\SolidBoolOperationTest\CutProcess.cs" initialLine="604" containingFunctionPresentation="method 'GetJoinedElementsActualIntersectSolid'">
+            <startOffsets>
+              <option value="26550" />
+            </startOffsets>
+            <endOffsets>
+              <option value="26586" />
+            </endOffsets>
+          </properties>
+          <option name="timeStamp" value="5" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>

@@ -122,7 +122,7 @@ namespace SmartComponentDeduction
         {
             List<Task> tasks = new List<Task>();
             List<List<PendingElement>> elementGroups = new List<List<PendingElement>>();
-            int threadCount = 20;
+            int threadCount = 10;
             int groupCount = _resultElements.Count / threadCount;
             int lastGroupCount = _resultElements.Count % threadCount;
             if (groupCount != 0)
@@ -168,67 +168,8 @@ namespace SmartComponentDeduction
             }
 
             Task.WaitAll(tasks.ToArray());
-            // foreach (var pendingElement in _resultElements)
-            // {
-            //     foreach (var document in _allDocuments)
-            //     {
-            //         AddIntersectPendingElements(document, pendingElement);
-            //     }
-            // }
         }
         
-        // private void AssociativeIntersectingElement()
-        // {   
-        //     // 从这里开始使用多线程
-        //     DateTime dt = DateTime.Now;
-        //     List<List<PendingElement>> elementGroups = new List<List<PendingElement>>();
-        //     int threadCount = 10;
-        //     int groupCount = _resultElements.Count / threadCount;
-        //     int lastGroupCount = _resultElements.Count % threadCount;
-        //     if (groupCount != 0)
-        //     {
-        //         for (int i = 0; i < threadCount; i++)
-        //         {
-        //             var elements = _resultElements.ToList().GetRange(groupCount * i, groupCount);
-        //             elementGroups.Add(elements);
-        //         }
-        //     }
-        //     if (lastGroupCount > 0)
-        //     {
-        //         elementGroups.Add(_resultElements.ToList().GetRange(_resultElements.Count - lastGroupCount, lastGroupCount));
-        //     }
-        //
-        //     // Task[] tasks = new Task[elementGroups.Count];
-        //     // for (int i = 0; i < elementGroups.Count; i++)
-        //     // {
-        //     //     tasks[i] = new Task(() =>
-        //     //             AssociativeIntersectElements(elementGroups[i])
-        //     //     );
-        //     // }
-        //
-        //     Task task1 = new Task(() =>
-        //         AssociativeIntersectElements(elementGroups[0]));
-        //     Task task2 = new Task(() =>
-        //         AssociativeIntersectElements(elementGroups[1]));
-        //     task1.Start();
-        //     task2.Start();
-        //
-        //     try
-        //     {
-        //         //主线程等待，可以 捕捉异常
-        //         Task.WaitAll(task1, task2);
-        //     }
-        //     catch (AggregateException ex)
-        //     {
-        //         foreach (var item in ex.InnerExceptions)
-        //         {
-        //             TaskDialog.Show("note!", $"异常类型：{item.GetType()}{Environment.NewLine}来自：  {item.Source} {Environment.NewLine} 异常内容：{item.Message} ");
-        //         }
-        //         Console.Write(ex.Message);
-        //     }
-        // }
-        //
-
         private ElementAndDocRelations IntersectFilterPreJudge(Document targetDoc, PendingElement originElement)
         {
             // 目标搜索文档为当前打开文档
@@ -273,8 +214,8 @@ namespace SmartComponentDeduction
             }
 
             ElementQuickFilter elementBoxFilter = Tools.GetBoxFilterBySolid(elementSolid, 0);
-            object Lock = _allDocuments;
-            Monitor.Enter(Lock);
+            object temp = _allDocuments;
+            Monitor.Enter(temp);
             try
             {
                 return targetDoc.Equals(_activeDoc)
@@ -295,7 +236,7 @@ namespace SmartComponentDeduction
             }
             finally
             {
-                Monitor.Exit(Lock);
+                Monitor.Exit(temp);
             }
         }
 

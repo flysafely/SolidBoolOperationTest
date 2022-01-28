@@ -680,10 +680,9 @@ namespace CommonTools
             }
             catch(Exception e)
             {
-                if (!(e is InvalidOperationException)) return null;
+                if (!(e is Autodesk.Revit.Exceptions.InvalidOperationException)) return null;
                 var scaledCuttingSolid = ScaleSolid(solid1, 1.000d + increase);
-                return 1.000d + increase < 1.01 ? IntersectRecursive(scaledCuttingSolid, solid2, increase) : null;
-
+                return 1.000d + increase < 1.01d ? IntersectRecursive(scaledCuttingSolid, solid2, increase) : null;
             }
         }
     }
