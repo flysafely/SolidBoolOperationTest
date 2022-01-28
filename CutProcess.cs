@@ -1,10 +1,13 @@
 ﻿using System;
 using System.Collections;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
 using Autodesk.Revit.ApplicationServices;
 using Autodesk.Revit.DB;
+using Autodesk.Revit.UI;
 using CommonTools;
 
 namespace SmartComponentDeduction
@@ -18,7 +21,9 @@ namespace SmartComponentDeduction
 
         private readonly string _cutRfaFileName;
 
-        private readonly List<CutInstance> _cutInstances = new List<CutInstance>();
+        private readonly BlockingCollection<PendingElement[]> omissiveKeyPendingElements = new BlockingCollection<PendingElement[]>();
+
+        private readonly BlockingCollection<CutInstance> _cutInstances = new BlockingCollection<CutInstance>();
 
 
         // 默认空心剪切族类familysymbol
@@ -47,9 +52,12 @@ namespace SmartComponentDeduction
         public void DoCuttingProcess(IList<PendingElement> pendingElements)
         {
             // 元素剪切优先级判断
-            if (!ImplementIntersectElementsCutPolicy(pendingElements))
+            if (!GetCutInstancesByCutPolicy(pendingElements))
                 return;
+            // 处理冲突元素
             DealWithCollideElements();
+            // 获取漏减的体
+            AddOmissiveCutInsances();
             CreateCutInstancesInActiveDoc();
             CreateCutInstancesInLinkDoc();
         }
@@ -57,32 +65,30 @@ namespace SmartComponentDeduction
         private void CreateCutInstancesInActiveDoc()
         {
             // 找出真实需要剪切的相交Solid
-            foreach (var cutIns in _cutInstances.Where(e =>
-                             e.BeCutElement.element.Document.Equals(_activeDoc) &&
-                             e.Relation != AssociationTypes.Collide)
-                         .ToList())
+            foreach (var cutIns in _cutInstances.GetConsumingEnumerable().
+                         Where(e => e.BeCutElement.element.Document.Equals(_activeDoc) && 
+                                    e.Relation != AssociationTypes.Collide).
+                         ToList().
+                         Where(cutIns => cutIns.OriginCutSolid != null))
             {
-                if (cutIns.OriginCutSolid != null)
+                GetCutNewInstanceKeyInfo(cutIns);
+                using (Transaction tran = new Transaction(_activeDoc, "CreateCutInstanceInActiveDoc"))
                 {
-                    GetCutNewInstanceKeyInfo(cutIns);
-                    using (Transaction tran = new Transaction(_activeDoc, "CreateCutInstanceInActiveDoc"))
+                    FailureHandlingOptions options = tran.GetFailureHandlingOptions();
+                    TransactionFailuresProcessor failureProcessor = new TransactionFailuresProcessor();
+                    options.SetFailuresPreprocessor(failureProcessor);
+                    tran.SetFailureHandlingOptions(options);
+                    try
                     {
-                        try
-                        {
-                            tran.Start();
-                            FailureHandlingOptions options = tran.GetFailureHandlingOptions();
-                            TransactionFailuresProcessor failureProcessor = new TransactionFailuresProcessor();
-                            options.SetFailuresPreprocessor(failureProcessor);
-                            tran.SetFailureHandlingOptions(options);
-                            CutHostElementWithTransformedCutFamilyInstance(cutIns);
-                            tran.Commit();
-                        }
-                        catch (Exception e)
-                        {
-                            Console.WriteLine(e.ToString());
-                            if (tran.GetStatus() == TransactionStatus.Started)
-                                tran.RollBack();
-                        }
+                        tran.Start();
+                        CutHostElementWithTransformedCutFamilyInstance(cutIns);
+                        tran.Commit();
+                    }
+                    catch (Exception e)
+                    {
+                        Console.WriteLine(e.ToString());
+                        if (tran.GetStatus() == TransactionStatus.Started)
+                            tran.RollBack();
                     }
                 }
             }
@@ -98,6 +104,26 @@ namespace SmartComponentDeduction
             // 处理发生冲突的元素的逻辑
         }
 
+        private void AddOmissiveCutInsances()
+        {   
+            // 由于GetJoinedElementsActualIntersectSolid需要修改Document所以不能调用多线程
+            // 生成由于join状态下扣减其中一个元素后被部分还原的体积所需要的cutinstance
+            foreach (var cutjoinIns in from omissiveKeyPendingElement in omissiveKeyPendingElements 
+                     let omissiveIntersectSolid = GetJoinedElementsActualIntersectSolid(omissiveKeyPendingElement[0], 
+                                                                                         omissiveKeyPendingElement[1], 
+                                                                                         omissiveKeyPendingElement[2]) 
+                     where omissiveIntersectSolid != null && omissiveIntersectSolid.Volume != 0 
+                     select new CutInstance(omissiveIntersectSolid)
+                     {
+                         Relation = AssociationTypes.Join,
+                         IntactElement = null,
+                         BeCutElement = omissiveKeyPendingElement[2]
+                     })
+            {
+                _cutInstances.Add(cutjoinIns);
+            }
+        }
+        
         private void CutHostElementWithTransformedCutFamilyInstance(CutInstance cutIns)
         {
             if (cutIns.CutFamilySymbol == null)
@@ -105,7 +131,8 @@ namespace SmartComponentDeduction
                 return;
             }
 
-            FamilyInstance cutInstance = _activeDoc.Create.NewFamilyInstance(
+            FamilyInstance cutInstance;
+            cutInstance = _activeDoc.Create.NewFamilyInstance(
                 cutIns.OriginCutSolid.ComputeCentroid(),
                 cutIns.CutFamilySymbol,
                 cutIns.BeCutElement.element,
@@ -462,13 +489,47 @@ namespace SmartComponentDeduction
             }
         }
 
-        public bool ImplementIntersectElementsCutPolicy(IList<PendingElement> pendingElements)
+        public bool GetCutInstancesByCutPolicy(IList<PendingElement> pendingElements)
         {
             if (pendingElements.Count < 1)
             {
                 return false;
             }
-
+            // // 从这里开始使用多线程
+            // DateTime dt = DateTime.Now;
+            // List<List<PendingElement>> elementGroups = new List<List<PendingElement>>();
+            // int threadCount = 10;
+            // int groupCount = pendingElements.Count / threadCount;
+            // int lastGroupCount = pendingElements.Count % threadCount;
+            // if (groupCount != 0)
+            // {
+            //     for (int i = 0; i < threadCount; i++)
+            //     {
+            //         var elements = pendingElements.ToList().GetRange(groupCount * i, groupCount);
+            //         elementGroups.Add(elements);
+            //     }
+            // }
+            // if (lastGroupCount > 0)
+            // {
+            //     elementGroups.Add(pendingElements.ToList().GetRange(pendingElements.Count - lastGroupCount, lastGroupCount));
+            // }
+            //
+            // List<Task> tasks = new List<Task>();
+            // foreach (var elementGroup in elementGroups)
+            // {
+            //     tasks.Add(new Task(() =>
+            //     {
+            //         foreach (var pendingElement in elementGroup)
+            //         {
+            //             ClassifyIntersect(pendingElement);
+            //         }
+            //     }));
+            // }
+            // foreach (var task in tasks)
+            // {
+            //     task.Start();
+            // }
+            
             foreach (var pendingElement in pendingElements)
             {
                 foreach (var intersectPendingElement in pendingElement.IntersectEles)
@@ -476,7 +537,7 @@ namespace SmartComponentDeduction
                     var pendingEleCutLevelNum = GetPendingElementCutOrderNumber(pendingElement);
                     var interPendingEleCutLevelNum = GetPendingElementCutOrderNumber(intersectPendingElement);
                     // 从原对象的标记属性中获取特殊优先级获取
-
+            
                     if (pendingEleCutLevelNum == interPendingEleCutLevelNum)
                     {
                         // 同类构件判断其归属文档优先级
@@ -498,7 +559,7 @@ namespace SmartComponentDeduction
             }
             return true;
         }
-
+        
         private int GetPendingElementCutOrderNumber(PendingElement pendingElement)
         {
             var cutLevelNum = _cutPolicy[(BuiltInCategory) pendingElement.element.Category.GetHashCode()];
@@ -522,44 +583,32 @@ namespace SmartComponentDeduction
                 var intersectSolid = GetIntersectSolid(cuttingPendingElement, cuttedPendingElement);
                 if (intersectSolid != null)
                 {
-                    CutInstance cutIns = new CutInstance(intersectSolid);
-                    cutIns.Relation = intersectSolid.Volume != 0 ? specifiedRelation : AssociationTypes.Join;
-                    cutIns.IntactElement = cuttingPendingElement;
-                    cutIns.BeCutElement = cuttedPendingElement;
+                    CutInstance cutIns = new CutInstance(intersectSolid)
+                    {
+                        Relation = intersectSolid.Volume != 0 ? specifiedRelation : AssociationTypes.Join,
+                        IntactElement = cuttingPendingElement,
+                        BeCutElement = cuttedPendingElement
+                    };
                     _cutInstances.Add(cutIns);
-                    
-                        // 处理join状态下的其他相交pendingElements与当前相交pendingElement的扣减部分
+
+                    // 处理join状态下的其他相交pendingElements与当前相交pendingElement的扣减部分
                     foreach (var intersectEle in cuttedPendingElement.IntersectEles)
                     {
-                        if (cuttedPendingElement.element.Document.Equals(intersectEle.element.Document) &&
-                            JoinGeometryUtils.AreElementsJoined(cuttedPendingElement.element.Document,
-                                cuttedPendingElement.element, intersectEle.element) &&
-                            JoinGeometryUtils.IsCuttingElementInJoin(cuttedPendingElement.element.Document,
-                                cuttedPendingElement.element, intersectEle.element) && 
-                            intersectEle.element.Id != cuttingPendingElement.element.Id)
+                        if (Tools.GetArchMainSolid(cuttingPendingElement.element,
+                                cuttingPendingElement.TransformInWCS) == null ||
+                            Tools.GetArchMainSolid(intersectEle.element, intersectEle.TransformInWCS) == null)
                         {
-                            if (Tools.GetArchMainSolid(cuttingPendingElement.element,
-                                    cuttingPendingElement.TransformInWCS) == null ||
-                                Tools.GetArchMainSolid(intersectEle.element, intersectEle.TransformInWCS) == null)
-                            {
-                                continue;
-                            }
-                            
-                            if (!cuttedPendingElement.element.Document.Equals(_activeDoc))
-                            {
-                                continue;
-                            }
-                            
-                            Solid joinedElementsIntersectSolid = GetJoinedElementsActualIntersectSolid(cuttedPendingElement, cuttingPendingElement, intersectEle);
-                            
-                            if (joinedElementsIntersectSolid != null && joinedElementsIntersectSolid.Volume != 0)
-                            {
-                                CutInstance cutjoinIns = new CutInstance(joinedElementsIntersectSolid);
-                                cutjoinIns.Relation = AssociationTypes.Join;
-                                cutjoinIns.IntactElement = null;
-                                cutjoinIns.BeCutElement = intersectEle;
-                                _cutInstances.Add(cutjoinIns);
-                            }
+                            continue;
+                        }
+                        if (!cuttedPendingElement.element.Document.Equals(_activeDoc))
+                        {
+                            continue;
+                        }
+                        
+                        if (IsCutOperationAffectOtherJoinedElement(cuttedPendingElement, intersectEle))
+                        {
+                            // 发现存在额外相交体的情况时，只记录，先不进入事务处理
+                            omissiveKeyPendingElements.Add(new [] {cuttedPendingElement, cuttingPendingElement, intersectEle});
                         }
                     }
                 }
@@ -579,10 +628,18 @@ namespace SmartComponentDeduction
             }
         }
 
+        private bool IsCutOperationAffectOtherJoinedElement(PendingElement hostElement, PendingElement joinedElement)
+        {
+            return hostElement.element.Document.Equals(joinedElement.element.Document) &&
+                   JoinGeometryUtils.AreElementsJoined(hostElement.element.Document, hostElement.element, joinedElement.element) && 
+                   JoinGeometryUtils.IsCuttingElementInJoin(hostElement.element.Document, hostElement.element, joinedElement.element) &&
+                   joinedElement.element.Id != hostElement.element.Id;
+        }
+        
         private Solid GetJoinedElementsActualIntersectSolid(PendingElement cuttedPendingElement, PendingElement cuttingPendingElement, PendingElement cuttedIntersectPendingElement)
         {
-            Solid joinedElementsIntersectSolid = null;
-            using (Transaction tran = new Transaction(_activeDoc,
+            Solid omissiveIntersectSolid = null;
+            using (Transaction tran = new Transaction(cuttedPendingElement.element.Document,
                        "ReJoinElements"))
             {
                 try
@@ -597,17 +654,24 @@ namespace SmartComponentDeduction
                         cuttedPendingElement.element, cuttedIntersectPendingElement.element);
                     _activeDoc.Regenerate();
 
-                    joinedElementsIntersectSolid = BooleanOperationsUtils.ExecuteBooleanOperation(
-                        Tools.GetArchMainSolid(cuttingPendingElement.element,
+                    Solid joinedElementsIntersectSolid = Tools.IntersectRecursive(Tools.GetArchMainSolid(cuttingPendingElement.element,
                             cuttingPendingElement.TransformInWCS),
-                        Tools.GetArchMainSolid(cuttedIntersectPendingElement.element, cuttedIntersectPendingElement.TransformInWCS),
-                        BooleanOperationsType.Intersect);
-
+                        Tools.GetArchMainSolid(cuttedIntersectPendingElement.element, cuttedPendingElement.TransformInWCS),
+                        0.001);
+                    
+                    if (joinedElementsIntersectSolid == null || joinedElementsIntersectSolid.Volume == 0)
+                        return omissiveIntersectSolid;
+                    
+                    omissiveIntersectSolid = Tools.IntersectRecursive(Tools.GetArchMainSolid(
+                            cuttingPendingElement.element,
+                            cuttingPendingElement.TransformInWCS),
+                        joinedElementsIntersectSolid,
+                        0.001);
+                    
                     JoinGeometryUtils.JoinGeometry(cuttedPendingElement.element.Document,
                         cuttedPendingElement.element, cuttedIntersectPendingElement.element);
                     _activeDoc.Regenerate();
                     tran.Commit();
- 
                 }
                 catch (Exception e)
                 {
@@ -617,7 +681,7 @@ namespace SmartComponentDeduction
                 }
             }
 
-            return joinedElementsIntersectSolid;
+            return omissiveIntersectSolid;
         }
         
         private Solid GetIntersectSolid(PendingElement cuttingPendingElement, PendingElement cuttedPendingElement)
@@ -653,7 +717,10 @@ namespace SmartComponentDeduction
             }
 
             intersectSolid = Tools.IntersectRecursive(cuttingSolid, cuttedSolid, 0.001);
-            
+            if (intersectSolid == null)
+            {
+                return null;
+            }
             return intersectSolid.Volume > 0 ? intersectSolid : null;
         }
     }

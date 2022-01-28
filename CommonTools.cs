@@ -678,17 +678,12 @@ namespace CommonTools
                 return BooleanOperationsUtils.ExecuteBooleanOperation(solid1, solid2,
                         BooleanOperationsType.Intersect);
             }
-            catch
+            catch(Exception e)
             {
+                if (!(e is InvalidOperationException)) return null;
                 var scaledCuttingSolid = ScaleSolid(solid1, 1.000d + increase);
-                if (1.000d + increase < 1.01)
-                {
-                    return IntersectRecursive(scaledCuttingSolid, solid2, increase);
-                }
-                else
-                {
-                    return null;
-                }
+                return 1.000d + increase < 1.01 ? IntersectRecursive(scaledCuttingSolid, solid2, increase) : null;
+
             }
         }
     }
