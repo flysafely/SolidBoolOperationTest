@@ -6,7 +6,10 @@ using Autodesk.Revit.UI;
 using Autodesk.Revit.Attributes;
 using Autodesk.Revit.UI.Selection;
 using Autodesk.Revit.ApplicationServices;
+using Autodesk.Revit.UI.Events;
 using CommonTools;
+using System.Windows;
+using Application = Autodesk.Revit.ApplicationServices.Application;
 
 namespace SmartComponentDeduction
 {

@@ -11,8 +11,6 @@
     <option name="LAST_RESOLUTION" value="IGNORE" />
   </component>
   <component name="HighlightingSettingsPerFile">
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
-    <setting file="mock:///Dummy.cs" root0="SKIP_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/4c14456319154999b7e3b4c105f953a419f8ad0/0a/a94dd074/SolidUtils.cs" root0="SKIP_HIGHLIGHTING" />
     <setting file="file://$APPLICATION_CONFIG_DIR$/resharper-host/DecompilerCache/decompiler/f2625fd844aa4dd5b6a3882f24f14d7952e178/e4/6d6e225e/InvalidOperationException.cs" root0="SKIP_HIGHLIGHTING" />
   </component>

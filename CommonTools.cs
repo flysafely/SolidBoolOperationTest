@@ -186,7 +186,7 @@ namespace CommonTools
         {
             try
             {
-                string familyTemplateFilePath = Path.Combine(app.FamilyTemplatePath, "公制常规模型.rft");
+                string familyTemplateFilePath = Path.Combine(app.FamilyTemplatePath, "自适应公制常规模型.rft");
                 //var basePath = $"{ProductPath.FamilyPath}\\{rvtVersion}";
                 //string filePath = @"C:\ProgramData\Autodesk\RVT 2021\Family Templates\Chinese\公制常规模型.rft";
                 Document familyDoc;
@@ -536,7 +536,10 @@ namespace CommonTools
             }
 
             var hollowStretch = CreateFreeFormElementFamily(doc, app, cutSolid, false);
+            if (hollowStretch == null)
+            {
 
+            }
             var ids = hollowStretch.GetFamilySymbolIds();
             var elementIdEnumerator = ids.GetEnumerator();
 

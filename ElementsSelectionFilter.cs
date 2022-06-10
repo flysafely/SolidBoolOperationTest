@@ -29,6 +29,7 @@ namespace SmartComponentDeduction
                 (int) BuiltInCategory.OST_StructuralFraming,
                 (int) BuiltInCategory.OST_RvtLinks
             };
+            if (element.Category == null) return false;
             if (allowCategorys.Contains(element.Category.Id.IntegerValue))
             {
                 return true;

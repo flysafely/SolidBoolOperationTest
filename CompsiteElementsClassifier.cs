@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows;
 using Autodesk.Revit.DB;
 using Autodesk.Revit.UI;
 using Autodesk.Revit.UI.Events;
@@ -37,7 +39,11 @@ namespace SmartComponentDeduction
             // 聚类操作
             ClassifyElement(refs);
             // 关联相交元素
+            var passTime = DateTime.Now;
             AssociativeIntersectElements();
+            TimeSpan ts = DateTime.Now - passTime;    //计算时间差
+            string time = ts.TotalSeconds.ToString();
+            MessageBox.Show(time);
         }
 
         private void ClassifyElement(IEnumerable<Reference> refs)
@@ -138,36 +144,46 @@ namespace SmartComponentDeduction
                 elementGroups.Add(_resultElements.ToList().GetRange(_resultElements.Count - lastGroupCount, lastGroupCount));
             }
             
+            //foreach (var pendingElements in elementGroups)
+            //{
+            //    tasks.Add(new Task(() =>
+            //    {
+            //        List<Task> inTasks = new List<Task>();
+                    
+            //        foreach (var doc in _allDocuments)
+            //        {
+            //            inTasks.Add(new Task(() =>
+            //            {
+            //                foreach (var pendingElement in pendingElements)
+            //                {
+            //                    AddIntersectPendingElements(doc, pendingElement);
+            //                }
+            //            }));
+            //        }
+            //        foreach (var inTask in inTasks)
+            //        {
+            //            inTask.Start();
+            //        }
+            //        Task.WaitAll(inTasks.ToArray());
+            //    }));
+            //}
+            
+            //foreach (var task in tasks)
+            //{   
+            //    task.Start();
+            //}
+
+            //Task.WaitAll(tasks.ToArray());
             foreach (var pendingElements in elementGroups)
             {
-                tasks.Add(new Task(() =>
+                foreach (var doc in _allDocuments)
                 {
-                    List<Task> inTasks = new List<Task>();
-                    
-                    foreach (var doc in _allDocuments)
+                    foreach (var pendingElement in pendingElements)
                     {
-                        inTasks.Add(new Task(() =>
-                        {
-                            foreach (var pendingElement in pendingElements)
-                            {
-                                AddIntersectPendingElements(doc, pendingElement);
-                            }
-                        }));
+                        AddIntersectPendingElements(doc, pendingElement);
                     }
-                    foreach (var inTask in inTasks)
-                    {
-                        inTask.Start();
-                    }
-                    Task.WaitAll(inTasks.ToArray());
-                }));
+                }
             }
-            
-            foreach (var task in tasks)
-            {   
-                task.Start();
-            }
-
-            Task.WaitAll(tasks.ToArray());
         }
         
         private ElementAndDocRelations IntersectFilterPreJudge(Document targetDoc, PendingElement originElement)
@@ -206,7 +222,6 @@ namespace SmartComponentDeduction
         private IList<Element> SolidQuickFilterIntersectElements(Document targetDoc, PendingElement pendingElement,
             Transform targetDocTransform)
         {
-
             var elementSolid = GetParticularTransformedSolid(targetDoc, pendingElement, targetDocTransform);
             if (elementSolid == null)
             {
@@ -228,6 +243,7 @@ namespace SmartComponentDeduction
                         .Where(e => e.Id != pendingElement.element.Id && e.Category != null &&
                                     _targetCategories.Contains((BuiltInCategory) e.Category.GetHashCode()))
                         .ToList();
+
             }
             catch (Exception e)
             {
