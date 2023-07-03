@@ -44,7 +44,7 @@ namespace SmartComponentDeduction
                 var refs = activeUiDoc.Selection.PickObjects(ObjectType.Element, new ElementsSelectionFilter());
                 var compositeElementsClassifier = new CompositeElementsClassifier(activeDoc, refs, targetCategories);
                 var intersectResults = compositeElementsClassifier.GetExistIntersectElements();
-                var cutProcess = new CutProcess(activeApp, activeDoc, CutPolicy, "CMCU自定义空心轮廓族");
+                var cutProcess = new CutProcess(activeApp, activeDoc, CutPolicy, "****自定义空心轮廓族");
                 cutProcess.DoCuttingProcess(intersectResults);
             }
             catch (Autodesk.Revit.Exceptions.OperationCanceledException)
